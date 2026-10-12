@@ -3,6 +3,8 @@
 
 # Superstore Discount Optimizer
 
+🔗 **Live Demo:** [Try the app on Streamlit](https://djenadi1-full-projects-superstoreapp-nrbv0q.streamlit.app/)
+
 An end-to-end machine learning project that uses historical retail data to recommend discounts based on a desired profitability level.
 
 The project covers the full workflow from **SQL data cleaning and analysis** to **feature engineering, PyTorch model training, evaluation, and deployment with Streamlit**.
