@@ -8,6 +8,12 @@ from sentence_transformers import SentenceTransformer
 import os
 
 
+# Anchor all paths to the folder this script lives in.
+# This makes the app work no matter what the current working directory is
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 # same model class as in the training notebook
 class GenCatMLP(nn.Module):
     def __init__(self, in_dim, out_dim, hidden=1024, p=0.5):
@@ -29,7 +35,7 @@ class GenCatMLP(nn.Module):
 
 # the model was trained on scaled data, so we load the saved scaler
 def get_scaler():
-    return joblib.load("models/scaler.pkl")
+    return joblib.load(os.path.join(BASE_DIR, "models", "scaler.pkl"))
 
 
 # the labels csv has a header row first, the names are in the second row
@@ -42,33 +48,39 @@ def get_labels(path):
 def load_everything():
     # Check if required files exist
     required_files = [
-        "models/all-MiniLM-L6-v2/config_sentence_transformers.json",
-        "models/scaler.pkl",
-        "labels/feature_columns.csv",
-        "labels/labels_genres.csv",
-        "labels/labels_gencat.csv",
-        "models/best_genres.pth",
-        "models/best_gencat.pth"
+        os.path.join(BASE_DIR, "models", "all-MiniLM-L6-v2", "config_sentence_transformers.json"),
+        os.path.join(BASE_DIR, "models", "scaler.pkl"),
+        os.path.join(BASE_DIR, "labels", "feature_columns.csv"),
+        os.path.join(BASE_DIR, "labels", "labels_genres.csv"),
+        os.path.join(BASE_DIR, "labels", "labels_gencat.csv"),
+        os.path.join(BASE_DIR, "models", "best_genres.pth"),
+        os.path.join(BASE_DIR, "models", "best_gencat.pth"),
     ]
 
     for file in required_files:
         if not os.path.exists(file):
             raise FileNotFoundError(f"Required file not found: {file}")
 
-    encoder = SentenceTransformer("models/all-MiniLM-L6-v2")
-    feature_columns = pd.read_csv("labels/feature_columns.csv", header=None)[0].tolist()
+    encoder = SentenceTransformer(os.path.join(BASE_DIR, "models", "all-MiniLM-L6-v2"))
+    feature_columns = pd.read_csv(
+        os.path.join(BASE_DIR, "labels", "feature_columns.csv"), header=None
+    )[0].tolist()
     scaler = get_scaler()
 
     in_dim = 384 + len(feature_columns)
 
-    genres_labels = get_labels("labels/labels_genres.csv")
+    genres_labels = get_labels(os.path.join(BASE_DIR, "labels", "labels_genres.csv"))
     model_genres = GenCatMLP(in_dim, len(genres_labels))
-    model_genres.load_state_dict(torch.load("models/best_genres.pth", map_location="cpu"))
+    model_genres.load_state_dict(
+        torch.load(os.path.join(BASE_DIR, "models", "best_genres.pth"), map_location="cpu")
+    )
     model_genres.eval()
 
-    gencat_labels = get_labels("labels/labels_gencat.csv")
+    gencat_labels = get_labels(os.path.join(BASE_DIR, "labels", "labels_gencat.csv"))
     model_gencat = GenCatMLP(in_dim, len(gencat_labels))
-    model_gencat.load_state_dict(torch.load("models/best_gencat.pth", map_location="cpu"))
+    model_gencat.load_state_dict(
+        torch.load(os.path.join(BASE_DIR, "models", "best_gencat.pth"), map_location="cpu")
+    )
     model_gencat.eval()
 
     return encoder, feature_columns, scaler, model_genres, genres_labels, model_gencat, gencat_labels
