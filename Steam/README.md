@@ -2,6 +2,12 @@
 
 This project is a machine learning system that predicts game genres and categories for Steam games using a neural network model. It combines traditional numerical features with text embeddings from game names to provide accurate genre predictions.
 
+## Live Demo
+
+Try the live Steam Game Genre Predictor web application:
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://full-projects-8iblvu4aktnyyaairiralk.streamlit.app/)
+
+
 ## Project Overview
 
 The system takes game metadata as input and predicts the most likely genres and categories for a given game. This is achieved through:
@@ -109,6 +115,11 @@ Input parameters include:
 ## Output
 
 Predictions are returned as top 10 probabilities for each category, with confidence scores between 0 and 1.
+
+## Live Demo
+
+Try the live Steam Game Genre Predictor web application:
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://full-projects-8iblvu4aktnyyaairiralk.streamlit.app/)
 
 ## Contributing
 
