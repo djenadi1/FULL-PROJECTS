@@ -9,9 +9,7 @@ import torch.nn as nn
 from sentence_transformers import SentenceTransformer
 
 
-# Anchor all paths to the folder this script lives in.
-# This makes the app work no matter what the current working directory is
-
+# paths relative to this file so it works on streamlit cloud too
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # these get np.log1p in training (big counts squashed), so we do the same here
@@ -51,7 +49,7 @@ def get_labels(path):
 # cache so streamlit doesnt reload everything every time we click something
 @st.cache_resource
 def load_everything():
-    # Check if required files exist
+    # fail early if something is missing
     required_files = [
         os.path.join(BASE_DIR, "models", "all-MiniLM-L6-v2", "config_sentence_transformers.json"),
         os.path.join(BASE_DIR, "models", "scaler.pkl"),
