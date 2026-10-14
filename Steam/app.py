@@ -1,3 +1,5 @@
+import os
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -5,13 +7,16 @@ import streamlit as st
 import torch
 import torch.nn as nn
 from sentence_transformers import SentenceTransformer
-import os
 
 
 # Anchor all paths to the folder this script lives in.
 # This makes the app work no matter what the current working directory is
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# these get np.log1p in training (big counts squashed), so we do the same here
+LOG_COLS = ['price', 'positive', 'negative', 'peak_ccu', 'average_playtime_forever', 'median_playtime_forever',
+            'average_playtime_2weeks', 'median_playtime_2weeks', 'achievements', 'dlc_count', 'owners_mid', 'n_languages']
 
 
 # same model class as in the training notebook
@@ -67,7 +72,8 @@ def load_everything():
     )[0].tolist()
     scaler = get_scaler()
 
-    in_dim = 384 + len(feature_columns)
+    # name embedding + description embedding + the tabular stuff
+    in_dim = 384 + 384 + len(feature_columns)
 
     genres_labels = get_labels(os.path.join(BASE_DIR, "labels", "labels_genres.csv"))
     model_genres = GenCatMLP(in_dim, len(genres_labels))
@@ -102,6 +108,9 @@ st.title("Steam game genre predictor")
 choice = st.radio("Which model?", ["Genres only", "Genres + categories"], horizontal=True)
 
 name = st.text_input("Game name")
+description = st.text_area("Short description (optional, but it helps a lot)",
+                           placeholder="A roguelike dungeon crawler where you ...")
+release_year = st.number_input("Release year", 1997, 2030, 2024)
 release_month = st.slider("Release month", 1, 12, 6)
 price = st.number_input("Price (USD)", 0.0, 200.0, 19.99)
 price_status = st.selectbox("Price status", ["free", "paid", "unavailable"])
@@ -116,9 +125,10 @@ average_playtime_2weeks = st.number_input("Avg playtime 2 weeks", 0, 10_000, 0)
 median_playtime_2weeks = st.number_input("Median playtime 2 weeks", 0, 10_000, 0)
 achievements = st.number_input("Achievements", 0, 10_000, 0)
 dlc_count = st.number_input("DLC count", 0, 1_000, 0)
-windows = st.number_input("Windows (0/1)", 0, 1, 1)
-mac = st.number_input("macOS (0/1)", 0, 1, 0)
-linux = st.number_input("Linux (0/1)", 0, 1, 0)
+n_languages = st.number_input("Supported languages", 0, 100, 1)
+windows = int(st.checkbox("Windows", value=True))
+mac = int(st.checkbox("macOS"))
+linux = int(st.checkbox("Linux"))
 
 
 if st.button("Predict"):
@@ -127,11 +137,14 @@ if st.button("Predict"):
         st.stop()
 
     # turn the name into a vector
-    name_vec = encoder.encode(name, normalize_embeddings=True)
+    # same lowercase/strip as the cleaning notebook
+    name_vec = encoder.encode(name.strip().lower(), normalize_embeddings=True)
+    desc_vec = encoder.encode(description.strip(), normalize_embeddings=True)
 
     # put all the inputs in one row
     row = pd.DataFrame([{
         "release_month": f"{release_month:02d}",
+        "release_year": release_year,
         "price": price,
         "price_status": price_status,
         "owners_mid": owners_mid,
@@ -148,15 +161,17 @@ if st.button("Predict"):
         "windows": windows,
         "mac": mac,
         "linux": linux,
+        "n_languages": n_languages,
     }])
+    row[LOG_COLS] = np.log1p(row[LOG_COLS].astype("float32"))
 
     # one hot encode like in training, then make sure columns are in the same order
     row = pd.get_dummies(row, columns=["release_month", "price_status"],
                          prefix=["m_", "status_"])
     row = row.reindex(columns=feature_columns, fill_value=0)
 
-    # embedding first, then the other features (same as training)
-    x = np.concatenate([name_vec, row.to_numpy(dtype="float32").flatten()])
+    # embeddings first (name, then description), then the other features (same as training)
+    x = np.concatenate([name_vec, desc_vec, row.to_numpy(dtype="float32").flatten()])
     x = scaler.transform(x.reshape(1, -1)).astype("float32")
     x = torch.from_numpy(x)
 
