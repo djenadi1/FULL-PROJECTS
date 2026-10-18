@@ -168,7 +168,8 @@ The 70% goal holds up on test. The auto flags came out a bit under the 85% targe
 
 ## Things I'd do differently / limitations
 
-- **The model never sees the video.** If something is AI-made, it mostly shows in the pixels and the audio. Even one frame per post would probably help more than all my metadata features, but this dataset has no media.
+- **The model only uses metadata, it never sees the video.** If something is AI-made, it mostly shows in the pixels and the audio, and that's exactly what I don't have. Even one frame per post (basically the thumbnail) run through an image model would probably boost it a lot, more than all my metadata features together. This dataset has no media though, so that would need a separate download step.
+- **The human review could make it better over time.** Every post a reviewer checks gets a real, checked label, and those are exactly the posts the model wasn't sure about. Feeding them back into training would give it more (and cleaner) data right where it struggles, so it should get more precise every round.
 - **The labels are noisy.** `is_ai_generated` is TikTok's own tag and lots of AI posts never get tagged. So some of my "false alarms" are probably real AI posts, which makes the precision look worse than it really is.
 - **Label-based features would help.** In an earlier experiment I added target encodings (stuff like "how often is this exact duration AI in the training data", computed out-of-fold) and a TF-IDF text score, and average precision went from about 0.36 to about 0.46. I left them out here because they need labels and a fixed split, so they don't really belong in a cleaning notebook.
 - **It's one month.** Everything is from September 2026 and AI tools change fast, so the thresholds would need checking again on newer data.
