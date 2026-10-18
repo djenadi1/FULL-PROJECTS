@@ -1,0 +1,7 @@
+{
+  "model": "models/best_full.pth",
+  "prior_shift": -2.79644682353189,
+  "real_rate": 0.0577,
+  "auto_flag": 0.79,
+  "review": 0.069
+}
