@@ -1,6 +1,3 @@
-# FULL-PROJECTS
-
-
 # Superstore Discount Optimizer
 
 🔗 **Live Demo:** [Try the app on Streamlit](https://djenadi1-full-projects-superstoreapp-nrbv0q.streamlit.app/)
