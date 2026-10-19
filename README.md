@@ -7,6 +7,7 @@ My machine learning projects, each one going from raw data to a trained model. E
 | [TikTok AI Content Detector](Tiktok/README.md) | Predicts if a TikTok post is AI-generated from metadata and captions only, trained on a sample of 99 million posts and tested at the real 5.8% AI rate. Ends with a human review setup that catches about 70% of AI posts. | - |
 | [Steam Game Genre Predictor](Steam/README.md) | Predicts a game's genres and store categories from its stats, name and description, using text embeddings and a multi-label neural network. | [Streamlit app](https://full-projects-8iblvu4aktnyyaairiralk.streamlit.app/) |
 | [Superstore Discount Optimizer](Superstore/README.md) | Cleans retail data with SQL, trains a neural network to predict an order's profit class, and recommends a discount range for a target profit level. | [Streamlit app](https://djenadi1-full-projects-superstoreapp-nrbv0q.streamlit.app/) |
+| [Satellite Image Classifier](Satellite/README.md) | My final project for the Programming in Python II course: a CNN that sorts satellite images into 10 land use classes (97.3% validation accuracy), with a small Streamlit app. The code is student style, kept close to what I handed in. | - |
 
 Built with Python, PyTorch, pandas, scikit-learn, SQL and Streamlit.
 
