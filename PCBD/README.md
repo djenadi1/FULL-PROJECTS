@@ -68,6 +68,14 @@ Per class after the first 10 epochs:
 
 Inference is about 4 ms per image.
 
+The trained model is in `models/pcb_yolo26m.pt` (the 20 epoch one), so you don't have to retrain to use it:
+
+```python
+from ultralytics import YOLO
+model = YOLO("models/pcb_yolo26m.pt")
+results = model("some_pcb_image.jpg")
+```
+
 What I learned from the results:
 
 - The rare classes (SH, BMFO) are not the problem, they actually score well. The hardest ones are **CS** (scratches) and **CFO** (foreign objects on copper) because they look different every time
@@ -107,5 +115,6 @@ PCBD/
 ├── 01_model_train_eval.ipynb   # training
 ├── data.yaml                   # dataset config for YOLO
 ├── Data/                       # DsPCBSD+ dataset, see Data/README.md
-└── runs/                       # YOLO training outputs (weights, plots)
+├── models/pcb_yolo26m.pt       # trained model
+└── runs/                       # YOLO training plots (weights are not uploaded)
 ```
