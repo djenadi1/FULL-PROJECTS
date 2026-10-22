@@ -26,14 +26,14 @@ I use the YOLO version. The `2017` in the COCO folder names is just the COCO nam
 
 | YOLO id | Code | Defect | Train boxes |
 |---|---|---|---|
-| 0 | SH | Short | 360 |
-| 1 | SP | Spur | 2,359 |
-| 2 | SC | Spurious copper | 436 |
-| 3 | OP | Open | 459 |
-| 4 | MB | Mouse bite | 936 |
-| 5 | HB | Hole breakout | 1,304 |
-| 6 | CS | Conductor scratch | 1,097 |
-| 7 | CFO | Conductor foreign object | 750 |
-| 8 | BMFO | Base material foreign object | 320 |
+| 0 | SH | Short | 746 |
+| 1 | SP | Spur | 3,655 |
+| 2 | SC | Spurious copper | 1,308 |
+| 3 | OP | Open | 1,432 |
+| 4 | MB | Mouse bite | 1,983 |
+| 5 | HB | Hole breakout | 2,275 |
+| 6 | CS | Conductor scratch | 2,042 |
+| 7 | CFO | Conductor foreign object | 1,409 |
+| 8 | BMFO | Base material foreign object | 1,334 |
 
-Note: the classes are not balanced, there are about 7x more spurs than shorts. In COCO the ids start at 1 instead of 0.
+Note: the classes are not balanced, there are about 5x more spurs than shorts. In COCO the ids start at 1 instead of 0.
