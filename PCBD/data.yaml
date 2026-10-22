@@ -1,0 +1,16 @@
+# dataset config for ultralytics YOLO
+# if YOLO can't find the images, put the full path to Data_YOLO here
+path: Data/DsPCBSD+/Data_YOLO
+train: images/train
+val: images/val
+
+names:
+  0: SH    # short
+  1: SP    # spur
+  2: SC    # spurious copper
+  3: OP    # open
+  4: MB    # mouse bite
+  5: HB    # hole breakout
+  6: CS    # conductor scratch
+  7: CFO   # conductor foreign object
+  8: BMFO  # base material foreign object
