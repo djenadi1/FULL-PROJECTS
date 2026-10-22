@@ -1,3 +1,5 @@
 *.csv 
 *.parquet 
 *.npy
+*.pt
+*.cache
