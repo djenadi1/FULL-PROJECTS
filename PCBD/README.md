@@ -83,6 +83,28 @@ What I learned from the results:
 - Continuing from `best.pt` restarts the learning rate, so the first ~6 epochs were just recovering. It only gained a little in the end, mostly in box precision
 - The losses were still going down at epoch 20 so more training should help
 
+### Training curves (continued run)
+
+![results](runs/detect/runs/yolo26m_continued/results.png)
+
+You can see the dip in the first 3 epochs from the learning rate restarting, after that everything goes the right way and mAP is still climbing at the end.
+
+### Confusion matrix
+
+![confusion matrix](runs/detect/runs/yolo26m_continued/confusion_matrix_normalized.png)
+
+The classes almost never get mixed up with each other (the diagonal is 0.84 to 0.99). The real problem is the **background** column: when the model draws a box where there is no defect, it's mostly CS (26%), SP (19%), CFO (17%) or MB (14%). So CS and CFO score low because of **false alarms**, not because they get confused with other defects. Missed defects (background row) are only about 1%.
+
+### Labels vs predictions
+
+Real labels:
+
+![labels](runs/detect/runs/yolo26m_continued/val_batch0_labels.jpg)
+
+What the model predicted on the same images:
+
+![predictions](runs/detect/runs/yolo26m_continued/val_batch0_pred.jpg)
+
 ## How the app will work
 
 1. Load the high res PCB image
