@@ -117,6 +117,24 @@ What the model predicted on the same images:
 
 The tricky part is the tile size: defects in the tiles have to look about as big as in the training images, otherwise the model won't find them.
 
+## Test data for the app
+
+To test the app on real full boards I use the **PKU-Market-PCB** dataset (Huang et al., [A PCB Dataset for Defects Detection and Classification](https://arxiv.org/abs/1901.08204)). It's not uploaded here because it's almost 1 GB, download it and put it in `Data_app_test/PKU-Market-PCB/`:
+
+- Official: [Peking University lab page](https://robotics.pkusz.edu.cn/resources/datasetENG/) (Baidu Pan link)
+- Easier mirror I used: [RobotHuman/PCB_defect on Hugging Face](https://huggingface.co/datasets/RobotHuman/PCB_defect)
+
+What's in it:
+
+- 693 full board images, around 2300 to 3000 px per side
+- 2,953 defects, labels are Pascal VOC xml files with pixel corners (`xmin ymin xmax ymax`), not YOLO format
+- 6 defect types, 5 of them are also in my training data (mouse bite, open circuit, short, spur, spurious copper). Missing hole is not, so I skip those images
+- The defects were added with Photoshop, so they're not real factory defects, but it's fine for testing the pipeline
+
+A typical defect on these boards is about 64x63 px (from 24 up to 283 px). In the training images a defect takes about 10-30% of the crop, so a tile size of about **256-320 px** should make the defects look the same size as in training. With 640 px tiles they would look about 2x too small.
+
+There is also a 2026 paper that does almost the same thing on this dataset ([Scale-Aware Tile Inference for High-Resolution PCB Defect Detection](https://arxiv.org/abs/2605.24726)). They found a model trained on full images gets mAP50 = 0.01 when run on tiles, so the scale really matters, and that overlapping tiles fix most of the missed defects on tile borders.
+
 ## Problems I ran into
 
 - **Out of memory on Windows**: old dataloader workers from crashed runs stayed alive in Jupyter (27 Python processes using 22 GB of RAM). Fixed by restarting the kernel and using `workers=4`
@@ -124,11 +142,12 @@ The tricky part is the tile size: defects in the tiles have to look about as big
 
 ## To do
 
-- [ ] Train longer (100 epochs, `patience=20`) in one clean run
+- [ ] Train longer (200 epochs overnight, `patience=20`) in one clean run
 - [ ] Try `imgsz=320` since the images are small anyway (much faster)
 - [ ] Try class weights (`cls_pw`) and `flipud` augmentation
 - [ ] Build the tiling + Streamlit app
-- [ ] Test on real high res PCB photos
+- [ ] Test the app on PKU-Market-PCB and compare 256, 320 and 640 px tiles
+- [ ] Test on my own PCB photos
 
 ## Files
 
@@ -137,6 +156,7 @@ PCBD/
 ├── 01_model_train_eval.ipynb   # training
 ├── data.yaml                   # dataset config for YOLO
 ├── Data/                       # DsPCBSD+ dataset, see Data/README.md
+├── Data_app_test/              # PKU-Market-PCB full boards (not uploaded), see Data_app_test/README.md
 ├── models/pcb_yolo26m.pt       # trained model
 └── runs/                       # YOLO training plots (weights are not uploaded)
 ```
