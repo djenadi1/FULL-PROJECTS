@@ -18,7 +18,7 @@ EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 
 st.title("PCB Defect Detector")
 
-@st.cache_resource              # load the model only once, not on every click
+@st.cache_resource(show_spinner="Loading the model...")   # load the model only once, not on every click
 def load_model():
     return YOLO(MODEL_PATH)
 
@@ -49,12 +49,19 @@ if image_file:
     n_tiles = 0
     n_defects = 0
 
+    # tile start positions, we need them before the loop to know how many tiles there are
+    ys = range(0, max(img_h - overlap, 1), step)
+    xs = range(0, max(img_w - overlap, 1), step)
+    total_tiles = len(ys) * len(xs)
+    bar = st.progress(0, text="Checking tiles...")
+
     # go over the image tile by tile, each tile is checked and drawn right away
-    for y in range(0, max(img_h - overlap, 1), step):
-        for x in range(0, max(img_w - overlap, 1), step):
+    for y in ys:
+        for x in xs:
             piece = img_bgr[y:y + tile, x:x + tile]   # last tiles on the edge can be smaller
             r = model(piece, conf=conf, imgsz=tile, verbose=False)[0]
             n_tiles += 1
+            bar.progress(n_tiles / total_tiles, text=f"Checking tile {n_tiles} of {total_tiles}")
 
             # the overlap is cut in the middle: this tile only keeps the boxes
             # whose center is in its own part, the other half goes to the next tile
@@ -84,5 +91,6 @@ if image_file:
                 cv2.putText(out, f"{name} {c:.2f}", (x1, max(y1 - 4, 10)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
+    bar.empty()   # remove the bar when it's done
     st.image(out, caption=f"{n_defects} defects found ({n_tiles} tiles)", width="stretch")
     st.write(counts if counts else "No defects found")
