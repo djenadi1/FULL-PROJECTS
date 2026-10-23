@@ -1,0 +1,20 @@
+# both datasets together: DsPCBSD+ crops + PKU-Market-PCB tiles
+# classes are the union of both, missing hole (MH) only comes from PKU
+train:
+  - Data/DsPCBSD+/Data_YOLO/images/train
+  - Data_app_test/PKU_tiles/images/train
+val:
+  - Data/DsPCBSD+/Data_YOLO/images/val
+  - Data_app_test/PKU_tiles/images/val
+
+names:
+  0: SH    # short
+  1: SP    # spur
+  2: SC    # spurious copper
+  3: OP    # open
+  4: MB    # mouse bite
+  5: HB    # hole breakout
+  6: CS    # conductor scratch
+  7: CFO   # conductor foreign object
+  8: BMFO  # base material foreign object
+  9: MH    # missing hole (only in PKU)
