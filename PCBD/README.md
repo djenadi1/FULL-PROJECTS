@@ -1,6 +1,6 @@
 # PCB Defect Detector
 
-**Demo:** [pcbdv1.streamlit.app](https://pcbdv1.streamlit.app/)
+**Demo:** [Streamlit app](https://full-projects-fwgz2ytdquksf6mexeldqg.streamlit.app/)
 
 An app that takes a high resolution photo of a full PCB, cuts it into tiles, finds defects in every tile with a YOLO model and draws a red box around each defect on the full image.
 
@@ -123,7 +123,7 @@ The online demo runs on a CPU only, so a full board takes about a minute there.
 
 ### Try it yourself
 
-You don't need to download anything to try it, the [demo](https://pcbdv1.streamlit.app/) has 6 full PKU boards in [examples/](examples/), one for every defect type. They are from board 11 and 12, which I kept out of training, so the model never saw them. Just pick one in the dropdown.
+You don't need to download anything to try it, the [demo](https://full-projects-fwgz2ytdquksf6mexeldqg.streamlit.app/) has 6 full PKU boards in [examples/](examples/), one for every defect type. They are from board 11 and 12, which I kept out of training, so the model never saw them. Just pick one in the dropdown.
 
 On these 6 boards (conf 0.25) it finds all 30 labelled defects. It also draws a few extra boxes: the same 2 spots on every board 12 image, and a couple of defects get 2 boxes when they sit on a tile border.
 
