@@ -1,12 +1,12 @@
 # PCB Defect Detector
 
-**Work in progress.** The model is trained and the Streamlit app works on full boards, next is testing on my own PCB photos.
+**Demo:** [pcbdv1.streamlit.app](https://pcbdv1.streamlit.app/)
 
-The goal is an app that takes a really high resolution photo of a PCB (like 8K), cuts it into tiles, finds defects in every tile with a YOLO model and draws a red box around each defect on the full image.
+An app that takes a high resolution photo of a full PCB, cuts it into tiles, finds defects in every tile with a YOLO model and draws a red box around each defect on the full image.
 
 ## Data
 
-I use the public **DsPCBSD+** dataset (Lv et al., Scientific Data 2024): 10,259 small PCB crops with 20,276 hand drawn boxes over 9 defect types. More details in [Data/README.md](Data/README.md).
+For training I use the public **DsPCBSD+** dataset (Lv et al., Scientific Data 2024): 10,259 small PCB crops with 20,276 hand drawn boxes over 9 defect types. More details in [Data/README.md](Data/README.md). I also add tiles from the PKU-Market-PCB full boards (see [Test data](#test-data-for-the-app)), which brings a 10th class, missing hole.
 
 | Code | Defect |
 |---|---|
@@ -68,7 +68,7 @@ Per class (3,989 val images, 5,956 boxes):
 | CS | 0.777 | 0.490 |
 | CFO | 0.733 | 0.432 |
 
-Inference is about 2 ms per image (320 px).
+Inference is about 2 ms per 320 px image on the GPU and about 0.24 s on a CPU.
 
 The trained model is in `models/pcb_yolo26l_320.pt`, so you don't have to retrain to use it:
 
@@ -115,12 +115,15 @@ Run it with `streamlit run app.py` ([app.py](app.py)):
 4. Run the model on the tile and add the tile offset (x, y) to each box to get full image coordinates
 5. The overlap is cut in the middle: a tile only keeps the boxes whose center is in its own half, the neighbour tile keeps the rest. So a defect seen by 2 tiles is drawn once, without saving any boxes
 6. Draw a red box with the class and confidence right away, and count per defect type
+7. A progress bar shows which tile it's on, since a full board is about 80 to 100 tiles
 
-The tricky part is the tile size: defects in the tiles have to look about as big as in the training images, otherwise the model won't find them. Without tiling the model found 0 defects on the PKU boards, with tiling it finds all 3 on the ones I tested.
+The tricky part is the tile size: defects in the tiles have to look about as big as in the training images, otherwise the model won't find them. Without tiling the model found 0 defects on the PKU boards, with tiling it finds all of them.
+
+The online demo runs on a CPU only, so a full board takes about a minute there.
 
 ### Try it yourself
 
-You don't need to download anything to try it, the app has 6 full PKU boards in [examples/](examples/), one for every defect type. They are from board 11 and 12, which I kept out of training, so the model never saw them. Just pick one in the dropdown.
+You don't need to download anything to try it, the [demo](https://pcbdv1.streamlit.app/) has 6 full PKU boards in [examples/](examples/), one for every defect type. They are from board 11 and 12, which I kept out of training, so the model never saw them. Just pick one in the dropdown.
 
 On these 6 boards (conf 0.25) it finds all 30 labelled defects. It also draws a few extra boxes: the same 2 spots on every board 12 image, and a couple of defects get 2 boxes when they sit on a tile border.
 
@@ -138,7 +141,7 @@ What's in it:
 - 6 defect types, 5 of them are also in DsPCBSD+ (mouse bite, open circuit, short, spur, spurious copper). Missing hole is not, so it's a new class (MH) that only comes from PKU
 - The defects were added with Photoshop, so they're not real factory defects, but it's fine for testing the pipeline
 
-A typical defect on these boards is about 64x63 px (from 24 up to 283 px). In the training images a defect takes about 10-30% of the crop, so a tile size of about **256-320 px** should make the defects look the same size as in training. With 640 px tiles they would look about 2x too small.
+A typical defect on these boards is about 64x63 px (from 24 up to 283 px). In the training images a defect takes about 10-30% of the crop, so I use **320 px** tiles to make the defects look the same size as in training. With 640 px tiles they would look about 2x too small.
 
 There is also a 2026 paper that does almost the same thing on this dataset ([Scale-Aware Tile Inference for High-Resolution PCB Defect Detection](https://arxiv.org/abs/2605.24726)). They found a model trained on full images gets mAP50 = 0.01 when run on tiles, so the scale really matters, and that overlapping tiles fix most of the missed defects on tile borders.
 
@@ -146,21 +149,15 @@ There is also a 2026 paper that does almost the same thing on this dataset ([Sca
 
 - **Out of memory on Windows**: old dataloader workers from crashed runs stayed alive in Jupyter (27 Python processes using 22 GB of RAM). Fixed by restarting the kernel and using `workers=4`
 - **Wrong class counts at first**: my counting command skipped the last line of every label file because the files don't end with a newline
-
-## To do
-
-- [x] Train in one clean run with early stopping
-- [x] Try `imgsz=320` since the images are small anyway (much faster)
-- [x] Build the tiling + Streamlit app
-- [ ] Try class weights (`cls_pw`) and `flipud` augmentation
-- [ ] Test the app on all of PKU-Market-PCB and compare 256, 320 and 640 px tiles
-- [ ] Test on my own PCB photos
+- **App found almost nothing on DsPCBSD+ images**: I gave YOLO the image as RGB from PIL, but it wants BGR like cv2. Converting with `cv2.cvtColor` fixed it
+- **Streamlit Cloud couldn't import cv2**: ultralytics installs the normal `opencv-python`, which needs `libGL` on Linux. Fixed with a `packages.txt` in the repo root (`libgl1`, `libglib2.0-0`) and the cpu version of torch in `requirements.txt`
 
 ## Files
 
 ```
 PCBD/
 ├── app.py                      # Streamlit app with tiling
+├── requirements.txt            # packages for the app (Streamlit Cloud)
 ├── examples/                   # 6 full PKU boards to try in the app
 ├── train.py                    # training
 ├── combined.yaml               # dataset config for YOLO (DsPCBSD+ and PKU tiles)
