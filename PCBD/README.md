@@ -109,7 +109,7 @@ What the model predicted on the same images:
 
 Run it with `streamlit run app.py` ([app.py](app.py)):
 
-1. Upload a PCB image, pick a confidence with the slider
+1. Upload a PCB image or pick one of the example boards, then pick a confidence with the slider
 2. Convert it to BGR, YOLO wants the colors like cv2 and not RGB (with RGB it found 7 boxes instead of 105 on 40 DsPCBSD+ images)
 3. Go over the image tile by tile: 320 px tiles that overlap by 64 px. Small images (like the 226 px DsPCBSD+ crops) are just one tile
 4. Run the model on the tile and add the tile offset (x, y) to each box to get full image coordinates
@@ -117,6 +117,12 @@ Run it with `streamlit run app.py` ([app.py](app.py)):
 6. Draw a red box with the class and confidence right away, and count per defect type
 
 The tricky part is the tile size: defects in the tiles have to look about as big as in the training images, otherwise the model won't find them. Without tiling the model found 0 defects on the PKU boards, with tiling it finds all 3 on the ones I tested.
+
+### Try it yourself
+
+You don't need to download anything to try it, the app has 6 full PKU boards in [examples/](examples/), one for every defect type. They are from board 11 and 12, which I kept out of training, so the model never saw them. Just pick one in the dropdown.
+
+On these 6 boards (conf 0.25) it finds all 30 labelled defects. It also draws a few extra boxes: the same 2 spots on every board 12 image, and a couple of defects get 2 boxes when they sit on a tile border.
 
 ## Test data for the app
 
@@ -155,6 +161,7 @@ There is also a 2026 paper that does almost the same thing on this dataset ([Sca
 ```
 PCBD/
 ├── app.py                      # Streamlit app with tiling
+├── examples/                   # 6 full PKU boards to try in the app
 ├── train.py                    # training
 ├── combined.yaml               # dataset config for YOLO (DsPCBSD+ and PKU tiles)
 ├── pku_to_yolo.py              # cuts the PKU boards into 320 px tiles with YOLO labels

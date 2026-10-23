@@ -1,4 +1,5 @@
 # PCBD/app.py
+import os
 import streamlit as st
 import numpy as np
 import cv2
@@ -19,10 +20,22 @@ def load_model():
 model = load_model()
 
 uploaded = st.file_uploader("Upload a PCB image", type=["jpg", "jpeg", "png"])
+
+# full PKU boards from board 11 and 12, the model never saw them in training
+examples = sorted(os.listdir("examples"))
+example = st.selectbox("Or try one of these full boards", ["-"] + examples)
+
 conf = st.slider("Confidence threshold", 0.05, 0.95, 0.25, 0.05)
 
+# the uploaded image wins, if there is none we take the example
+image_file = None
 if uploaded:
-    img = np.array(Image.open(uploaded).convert("RGB"))
+    image_file = uploaded
+elif example != "-":
+    image_file = "examples/" + example
+
+if image_file:
+    img = np.array(Image.open(image_file).convert("RGB"))
     img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)   # YOLO wants BGR like cv2, not RGB
     img_h, img_w = img.shape[:2]
 
