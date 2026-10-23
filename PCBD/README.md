@@ -1,6 +1,6 @@
 # PCB Defect Detector
 
-**Work in progress.** The model is trained, the app is the next step.
+**Work in progress.** The model is trained and the Streamlit app works on full boards, next is testing on my own PCB photos.
 
 The goal is an app that takes a really high resolution photo of a PCB (like 8K), cuts it into tiles, finds defects in every tile with a YOLO model and draws a red box around each defect on the full image.
 
@@ -19,103 +19,104 @@ I use the public **DsPCBSD+** dataset (Lv et al., Scientific Data 2024): 10,259 
 | CS | Conductor scratch |
 | CFO | Conductor foreign object |
 | BMFO | Base material foreign object |
+| MH | Missing hole (only in PKU, see below) |
 
 Things I noticed about the data:
 
-- The images are small and not all the same size (I saw 108 px and 226 px), YOLO scales them up to 640
+- The images are small and not all the same size (I saw 108 px and 226 px), so I train at `imgsz=320`
 - Labels are in YOLO format, one line per box: `class x_center y_center width height`, all as fractions of the image size so it works for any image size
 - The classes are not balanced, about 5x more spurs than shorts
 - A lot of boxes overlap, for example a spur box can sit inside a short box
 
 ## Model
 
-I fine tuned **YOLO26m** (Ultralytics, pretrained on COCO). I picked it because it's the newest YOLO you can download right now, it's a bit better than YOLO11m on COCO at the same speed and it has a new label assignment (STAL) that helps with small objects, which defects are.
+I fine tuned **YOLO26l** (Ultralytics, pretrained on COCO). I picked YOLO26 because it's the newest YOLO you can download right now, it's a bit better than YOLO11 on COCO at the same speed and it has a new label assignment (STAL) that helps with small objects, which defects are. I first used the m version, the l version is bigger and scored better.
 
 Detection is basically two tasks at once:
 
 - **Regression**: where is the box (4 numbers)
-- **Classification**: which of the 9 defects it is
+- **Classification**: which of the 10 defects it is
 
-Training is literally one command since Ultralytics reads the YOLO labels directly:
+It's trained on both datasets together ([combined.yaml](combined.yaml)): the DsPCBSD+ crops plus 320 px tiles cut from the PKU boards ([pku_to_yolo.py](pku_to_yolo.py)), so the model sees defects at the same size as in the app. Training is one command ([train.py](train.py)):
 
 ```python
 from ultralytics import YOLO
-YOLO("yolo26m.pt").train(data="data.yaml", epochs=10, imgsz=640, workers=4)
+YOLO("yolo26l.pt").train(data="combined.yaml", epochs=60, patience=15, imgsz=320, cache="ram", workers=4)
 ```
 
 ## Results
 
-Trained on an RTX 3080 (10 GB). 10 epochs took about 40 min.
+Trained on an RTX 3080 (10 GB). It stopped early at epoch 58 because nothing got better for 15 epochs after the best one (epoch 43), it took about 1h50.
 
-| Run | Epochs | mAP50 | mAP50-95 | Precision | Recall |
-|---|---|---|---|---|---|
-| First run | 10 | 0.857 | 0.501 | 0.818 | 0.796 |
-| Continued from best.pt | +10 | **0.861** | **0.513** | 0.833 | 0.798 |
+| Run | Data | imgsz | Epochs | mAP50 | mAP50-95 | Precision | Recall |
+|---|---|---|---|---|---|---|---|
+| YOLO26m (old) | DsPCBSD+ | 640 | 20 | 0.861 | 0.513 | 0.833 | 0.798 |
+| **YOLO26l** | DsPCBSD+ and PKU tiles | 320 | 58 (best 43) | **0.900** | **0.518** | 0.880 | 0.865 |
 
-Per class after the first 10 epochs:
+Per class (3,989 val images, 5,956 boxes):
 
 | Class | mAP50 | mAP50-95 |
 |---|---|---|
-| HB | 0.979 | 0.799 |
-| SH | 0.922 | 0.575 |
-| OP | 0.913 | 0.541 |
-| BMFO | 0.898 | 0.452 |
-| SP | 0.856 | 0.390 |
-| MB | 0.843 | 0.407 |
-| SC | 0.831 | 0.503 |
-| CFO | 0.737 | 0.426 |
-| CS | 0.731 | 0.413 |
+| MH | 0.995 | 0.563 |
+| HB | 0.983 | 0.820 |
+| SH | 0.961 | 0.490 |
+| OP | 0.956 | 0.519 |
+| SC | 0.915 | 0.499 |
+| MB | 0.908 | 0.467 |
+| BMFO | 0.885 | 0.479 |
+| SP | 0.883 | 0.423 |
+| CS | 0.777 | 0.490 |
+| CFO | 0.733 | 0.432 |
 
-Inference is about 4 ms per image.
+Inference is about 2 ms per image (320 px).
 
-The trained model is in `models/pcb_yolo26m.pt` (the 20 epoch one), so you don't have to retrain to use it:
+The trained model is in `models/pcb_yolo26l_320.pt`, so you don't have to retrain to use it:
 
 ```python
 from ultralytics import YOLO
-model = YOLO("models/pcb_yolo26m.pt")
+model = YOLO("models/pcb_yolo26l_320.pt")
 results = model("some_pcb_image.jpg")
 ```
 
 What I learned from the results:
 
-- The rare classes (SH, BMFO) are not the problem, they actually score well. The hardest ones are **CS** (scratches) and **CFO** (foreign objects on copper) because they look different every time
+- The rare classes (SH, BMFO) are not the problem, they score well. The hardest ones are still **CS** (scratches) and **CFO** (foreign objects on copper) because they look different every time
 - **SP** and **MB** get found but their boxes are not precise (high mAP50, low mAP50-95), they are tiny and thin so a few pixels off matters a lot
-- Continuing from `best.pt` restarts the learning rate, so the first ~6 epochs were just recovering. It only gained a little in the end, mostly in box precision
-- The losses were still going down at epoch 20 so more training should help
+- Going to 320 px and the bigger l model helped mostly recall (0.798 to 0.865)
+- One clean run is better than continuing from `best.pt`, continuing restarts the learning rate and the first epochs are just recovering
 
-### Training curves (continued run)
+### Training curves
 
-![results](runs/detect/runs/yolo26m_continued/results.png)
-
-You can see the dip in the first 3 epochs from the learning rate restarting, after that everything goes the right way and mAP is still climbing at the end.
+![results](runs/detect/runs/combined_l_320-2/results.png)
 
 ### Confusion matrix
 
-![confusion matrix](runs/detect/runs/yolo26m_continued/confusion_matrix_normalized.png)
+![confusion matrix](runs/detect/runs/combined_l_320-2/confusion_matrix_normalized.png)
 
-The classes almost never get mixed up with each other (the diagonal is 0.84 to 0.99). The real problem is the **background** column: when the model draws a box where there is no defect, it's mostly CS (26%), SP (19%), CFO (17%) or MB (14%). So CS and CFO score low because of **false alarms**, not because they get confused with other defects. Missed defects (background row) are only about 1%.
+The classes almost never get mixed up with each other (the diagonal is 0.87 to 1.00). The real problem is still the **background** column: when the model draws a box where there is no defect, it's mostly CS (30%), SP (20%), CFO (16%) or MB (13%). So CS and CFO score low because of **false alarms**, not because they get confused with other defects. Missed defects (background row) are only 1 to 4%.
 
 ### Labels vs predictions
 
 Real labels:
 
-![labels](runs/detect/runs/yolo26m_continued/val_batch0_labels.jpg)
+![labels](runs/detect/runs/combined_l_320-2/val_batch0_labels.jpg)
 
 What the model predicted on the same images:
 
-![predictions](runs/detect/runs/yolo26m_continued/val_batch0_pred.jpg)
+![predictions](runs/detect/runs/combined_l_320-2/val_batch0_pred.jpg)
 
-## How the app will work
+## How the app works
 
-1. Load the high res PCB image
-2. Cut it into tiles with two grids: grid A starts at the corner, grid B is shifted by the leftover edge (or half a tile if the leftover is too small) so defects cut by grid A are whole in grid B. Tiles that go past the edge get black padding
-3. Run the model on every tile
-4. Add the tile offset to each box to get full image coordinates
-5. Merge duplicate boxes from the two grids with NMS
-6. Draw red boxes with the class and confidence
-7. Streamlit UI: upload an image, confidence slider, count per defect type
+Run it with `streamlit run app.py` ([app.py](app.py)):
 
-The tricky part is the tile size: defects in the tiles have to look about as big as in the training images, otherwise the model won't find them.
+1. Upload a PCB image, pick a confidence with the slider
+2. Convert it to BGR, YOLO wants the colors like cv2 and not RGB (with RGB it found 7 boxes instead of 105 on 40 DsPCBSD+ images)
+3. Go over the image tile by tile: 320 px tiles that overlap by 64 px. Small images (like the 226 px DsPCBSD+ crops) are just one tile
+4. Run the model on the tile and add the tile offset (x, y) to each box to get full image coordinates
+5. The overlap is cut in the middle: a tile only keeps the boxes whose center is in its own half, the neighbour tile keeps the rest. So a defect seen by 2 tiles is drawn once, without saving any boxes
+6. Draw a red box with the class and confidence right away, and count per defect type
+
+The tricky part is the tile size: defects in the tiles have to look about as big as in the training images, otherwise the model won't find them. Without tiling the model found 0 defects on the PKU boards, with tiling it finds all 3 on the ones I tested.
 
 ## Test data for the app
 
@@ -128,7 +129,7 @@ What's in it:
 
 - 693 full board images, around 2300 to 3000 px per side
 - 2,953 defects, labels are Pascal VOC xml files with pixel corners (`xmin ymin xmax ymax`), not YOLO format
-- 6 defect types, 5 of them are also in my training data (mouse bite, open circuit, short, spur, spurious copper). Missing hole is not, so I skip those images
+- 6 defect types, 5 of them are also in DsPCBSD+ (mouse bite, open circuit, short, spur, spurious copper). Missing hole is not, so it's a new class (MH) that only comes from PKU
 - The defects were added with Photoshop, so they're not real factory defects, but it's fine for testing the pipeline
 
 A typical defect on these boards is about 64x63 px (from 24 up to 283 px). In the training images a defect takes about 10-30% of the crop, so a tile size of about **256-320 px** should make the defects look the same size as in training. With 640 px tiles they would look about 2x too small.
@@ -142,21 +143,23 @@ There is also a 2026 paper that does almost the same thing on this dataset ([Sca
 
 ## To do
 
-- [ ] Train longer (200 epochs overnight, `patience=20`) in one clean run
-- [ ] Try `imgsz=320` since the images are small anyway (much faster)
+- [x] Train in one clean run with early stopping
+- [x] Try `imgsz=320` since the images are small anyway (much faster)
+- [x] Build the tiling + Streamlit app
 - [ ] Try class weights (`cls_pw`) and `flipud` augmentation
-- [ ] Build the tiling + Streamlit app
-- [ ] Test the app on PKU-Market-PCB and compare 256, 320 and 640 px tiles
+- [ ] Test the app on all of PKU-Market-PCB and compare 256, 320 and 640 px tiles
 - [ ] Test on my own PCB photos
 
 ## Files
 
 ```
 PCBD/
-├── 01_model_train_eval.ipynb   # training
-├── data.yaml                   # dataset config for YOLO
+├── app.py                      # Streamlit app with tiling
+├── train.py                    # training
+├── combined.yaml               # dataset config for YOLO (DsPCBSD+ and PKU tiles)
+├── pku_to_yolo.py              # cuts the PKU boards into 320 px tiles with YOLO labels
 ├── Data/                       # DsPCBSD+ dataset, see Data/README.md
-├── Data_app_test/              # PKU-Market-PCB full boards (not uploaded), see Data_app_test/README.md
-├── models/pcb_yolo26m.pt       # trained model
+├── Data_app_test/              # PKU-Market-PCB full boards and tiles (not uploaded), see Data_app_test/README.md
+├── models/pcb_yolo26l_320.pt   # trained model
 └── runs/                       # YOLO training plots (weights are not uploaded)
 ```
