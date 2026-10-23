@@ -1,0 +1,13 @@
+# Requirements for the PCB defect detector
+
+# cpu version of torch, the cuda one is way too big for Streamlit Cloud
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# app
+streamlit>=1.50.0
+ultralytics>=8.4.184
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python-headless>=4.7.0
+numpy>=1.23.0
+Pillow>=9.0.0

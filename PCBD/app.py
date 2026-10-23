@@ -11,18 +11,23 @@ overlap = 64   # tiles overlap a bit so a defect on the border is not cut in hal
 step = tile - overlap
 half = overlap // 2
 
+# folder of this file, so the paths also work when the app is started from somewhere else (Streamlit Cloud)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "pcb_yolo26l_320.pt")
+EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+
 st.title("PCB Defect Detector")
 
 @st.cache_resource              # load the model only once, not on every click
 def load_model():
-    return YOLO("models/pcb_yolo26l_320.pt")
+    return YOLO(MODEL_PATH)
 
 model = load_model()
 
 uploaded = st.file_uploader("Upload a PCB image", type=["jpg", "jpeg", "png"])
 
 # full PKU boards from board 11 and 12, the model never saw them in training
-examples = sorted(os.listdir("examples"))
+examples = sorted(os.listdir(EXAMPLES_DIR))
 example = st.selectbox("Or try one of these full boards", ["-"] + examples)
 
 conf = st.slider("Confidence threshold", 0.05, 0.95, 0.25, 0.05)
@@ -32,7 +37,7 @@ image_file = None
 if uploaded:
     image_file = uploaded
 elif example != "-":
-    image_file = "examples/" + example
+    image_file = os.path.join(EXAMPLES_DIR, example)
 
 if image_file:
     img = np.array(Image.open(image_file).convert("RGB"))
@@ -79,5 +84,5 @@ if image_file:
                 cv2.putText(out, f"{name} {c:.2f}", (x1, max(y1 - 4, 10)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
-    st.image(out, caption=f"{n_defects} defects found ({n_tiles} tiles)", use_container_width=True)
+    st.image(out, caption=f"{n_defects} defects found ({n_tiles} tiles)", width="stretch")
     st.write(counts if counts else "No defects found")
