@@ -4,13 +4,13 @@
 
 An end-to-end machine learning project that uses historical retail data to recommend discounts based on a desired profitability level.
 
-The project covers the full workflow from **SQL data cleaning and analysis** to **feature engineering, PyTorch model training, evaluation, and deployment with Streamlit**.
+The project covers the full workflow from **SQL data cleaning and analysis** to **feature engineering, PyTorch and XGBoost model training, evaluation, and deployment with Streamlit**.
 
 ## Overview
 
 Discounts can increase sales but can also significantly reduce profitability.
 
-This project trains a neural network to classify an order into one of three profitability levels:
+This project trains a PyTorch neural network and an XGBoost model to classify an order into one of three profitability levels:
 
 * **Loss**
 * **Medium Profit**
@@ -39,7 +39,7 @@ Feature Engineering
         ↓
 One-Hot Encoding
         ↓
-PyTorch Neural Network
+PyTorch Neural Network vs XGBoost
         ↓
 Profit Classification
         ↓
@@ -70,7 +70,16 @@ The user chooses their desired profit level and the application recommends the *
 
 ## Model
 
-The classifier is implemented in **PyTorch**.
+Two classifiers were trained on the same train/test split:
+
+| Model | Test Accuracy |
+|---|---|
+| PyTorch neural network | ~86% |
+| **XGBoost** | **89.3%** |
+
+XGBoost performed better, so the Streamlit app uses the XGBoost model (`notebooks/xgb_model.json`).
+
+The neural network is implemented in **PyTorch**.
 
 ### Architecture
 
@@ -145,6 +154,7 @@ Superstore/
 ├── notebooks/
 │   ├── experiments.ipynb
 │   ├── best_model.pth
+│   ├── xgb_model.json
 │   ├── categories.json
 │   └── feature_columns.json
 │
@@ -184,6 +194,8 @@ The application will then open in your browser.
 * Pandas
 * NumPy
 * PyTorch
+* XGBoost
+* DuckDB
 * Scikit-learn
 * Matplotlib
 * Streamlit
@@ -198,7 +210,6 @@ The application is intended as a **machine learning and portfolio project**, not
 
 ## Future Improvements
 
-* Compare the neural network with tree-based models such as XGBoost
 * Add prediction confidence visualization
 * Add model explainability
 * Improve hyperparameter optimization

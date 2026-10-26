@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-import torch
-import torch.nn as nn
+import numpy as np
 import json
 from pathlib import Path
+from xgboost import XGBClassifier
 
 
 # --------------------------------------------------
@@ -18,7 +18,6 @@ def get_discount_ranges(
     max_discount=0.8,
     step=0.001
 ):
-    model.eval()
 
     class_names = {
         0: "Loss",
@@ -26,28 +25,22 @@ def get_discount_ranges(
         2: "High Profit"
     }
 
-    predictions = []
+    # Every discount we want to try
+    # (rounded so the values don't drift)
+    discounts = np.round(
+        np.arange(min_discount, max_discount + step / 2, step),
+        3
+    )
 
-    with torch.no_grad():
+    # One row per discount:
+    # copy the sample and only change the discount
+    sample = np.asarray(sample, dtype=np.float32)
 
-        discount = min_discount
+    X = np.tile(sample, (len(discounts), 1))
 
-        while discount <= max_discount + 1e-9:
+    X[:, discount_index] = discounts
 
-            x = sample.clone()
-
-            # Replace discount value
-            x[discount_index] = discount
-
-            output = model(x.unsqueeze(0))
-
-            predicted_class = output.argmax(dim=1).item()
-
-            predictions.append(
-                (round(discount, 3), predicted_class)
-            )
-
-            discount += step
+    predicted = model.predict(X)
 
 
     # --------------------------------------------------
@@ -56,31 +49,27 @@ def get_discount_ranges(
 
     ranges = []
 
-    start_discount = predictions[0][0]
-    current_class = predictions[0][1]
+    start_discount = discounts[0]
+    current_class = int(predicted[0])
 
-    for i in range(1, len(predictions)):
+    for i in range(1, len(discounts)):
 
-        discount, predicted_class = predictions[i]
-
-        if predicted_class != current_class:
-
-            end_discount = predictions[i - 1][0]
+        if predicted[i] != current_class:
 
             ranges.append({
-                "start": start_discount,
-                "end": end_discount,
+                "start": float(start_discount),
+                "end": float(discounts[i - 1]),
                 "class": current_class
             })
 
-            start_discount = discount
-            current_class = predicted_class
+            start_discount = discounts[i]
+            current_class = int(predicted[i])
 
 
     # Final range
     ranges.append({
-        "start": start_discount,
-        "end": predictions[-1][0],
+        "start": float(start_discount),
+        "end": float(discounts[-1]),
         "class": current_class
     })
 
@@ -121,37 +110,19 @@ with open(
 # Model
 # --------------------------------------------------
 
-model = nn.Sequential(
+@st.cache_resource
+def load_model():
 
-    nn.Linear(95, 128),
-    nn.BatchNorm1d(128),
-    nn.ReLU(),
-    nn.Dropout(0.25),
+    model = XGBClassifier()
 
-    nn.Linear(128, 64),
-    nn.BatchNorm1d(64),
-    nn.ReLU(),
-    nn.Dropout(0.20),
+    model.load_model(
+        BASE_DIR / "notebooks" / "xgb_model.json"
+    )
 
-    nn.Linear(64, 32),
-    nn.ReLU(),
-
-    nn.Linear(32, 3)
-)
+    return model
 
 
-# --------------------------------------------------
-# Load trained weights
-# --------------------------------------------------
-
-state_dict = torch.load(
-    BASE_DIR / "notebooks" / "best_model.pth",
-    map_location="cpu"
-)
-
-model.load_state_dict(state_dict)
-
-model.eval()
+model = load_model()
 
 
 # --------------------------------------------------
@@ -280,7 +251,20 @@ if st.button("Calculate Discount"):
     # One-hot encode categorical columns
     # ----------------------------------------------
 
-    sample_encoded = pd.get_dummies(sample_df)
+    # Order Month is a number, so it has to be listed
+    # here or get_dummies skips it
+    sample_encoded = pd.get_dummies(
+        sample_df,
+        columns=[
+            "Ship Mode",
+            "Segment",
+            "State",
+            "Region",
+            "Category",
+            "Sub-Category",
+            "Order Month"
+        ]
+    )
 
 
     # ----------------------------------------------
@@ -315,13 +299,10 @@ if st.button("Calculate Discount"):
 
 
     # ----------------------------------------------
-    # Convert to tensor
+    # Convert to a numpy row
     # ----------------------------------------------
 
-    sample_tensor = torch.tensor(
-        sample_encoded.iloc[0].values,
-        dtype=torch.float32
-    )
+    sample_array = sample_encoded.iloc[0].values.astype(np.float32)
 
 
     # ----------------------------------------------
@@ -338,7 +319,7 @@ if st.button("Calculate Discount"):
 
     ranges, class_names = get_discount_ranges(
         model=model,
-        sample=sample_tensor,
+        sample=sample_array,
         discount_index=discount_index
     )
 
@@ -375,9 +356,9 @@ if st.button("Calculate Discount"):
     if len(matching_ranges) == 0:
 
         st.warning(
-            f"No discount between 0% and 80% "
-            f"was predicted as "
-            f"{class_names[desired_profit]}."
+            f"No discount gives {class_names[desired_profit]} "
+            f"for this order. Try another profit level "
+            f"or change the Sales amount."
         )
 
     else:
