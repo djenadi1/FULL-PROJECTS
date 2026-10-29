@@ -130,35 +130,6 @@ Test set (10% hold-out):
 Most of the improvement came from adding the short description embedding; cleaning the labels (merging translated
 categories, dropping labels with too few examples) and log-scaling the counts accounted for the rest.
 
-## Related Project: Superstore Discount Optimizer
-
-This repository also contains another machine learning project:
-
-**Superstore Discount Optimizer** - An end-to-end machine learning project that uses historical retail data to recommend discounts based on a desired profitability level.
-
-Key features:
-- PyTorch neural network for profit classification (Loss, Medium Profit, High Profit)
-- SQL data cleaning and analysis
-- Feature engineering with one-hot encoding (95 input features)
-- Interactive Streamlit application for discount recommendation
-- Discount range search algorithm
-
-Project structure:
-```
-Superstore/
-├── app.py
-├── requirements.txt
-├── data/
-│   └── ...
-├── notebooks/
-│   ├── experiments.ipynb
-│   ├── best_model.pth
-│   ├── categories.json
-│   └── feature_columns.json
-├── sql/
-│   └── ...
-└── README.md
-```
 
 ## License
 
