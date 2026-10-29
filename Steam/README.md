@@ -130,6 +130,27 @@ Test set (10% hold-out):
 Most of the improvement came from adding the short description embedding; cleaning the labels (merging translated
 categories, dropping labels with too few examples) and log-scaling the counts accounted for the rest.
 
+### XGBoost baseline
+
+I also tried a default `XGBClassifier` (100 trees) on the genres + categories labels, using the same features and scaling.
+
+| Model | macro mAP (validation set) |
+|---|---|
+| XGBoost, genres + categories | 0.347 |
+
+Log loss during training:
+
+| Round | Train logloss | Test logloss |
+|---|---|---|
+| 0 | 0.1703 | 0.1742 |
+| 10 | 0.1234 | 0.1456 |
+| 30 | 0.0960 | 0.1423 |
+| 50 | 0.0802 | 0.1433 |
+| 99 | 0.0563 | 0.1483 |
+
+Test log loss is lowest around round 30 and goes up after that, so it starts overfitting there.
+It stays below the MLP (0.386 macro mAP on genres + categories), so the app keeps using the MLP.
+
 ## Related Project: Superstore Discount Optimizer
 
 This repository also contains another machine learning project:
