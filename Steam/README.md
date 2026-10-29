@@ -151,35 +151,6 @@ Log loss during training:
 Test log loss is lowest around round 30 and goes up after that, so it starts overfitting there.
 It stays below the MLP (0.386 macro mAP on genres + categories), so the app keeps using the MLP.
 
-## Related Project: Superstore Discount Optimizer
-
-This repository also contains another machine learning project:
-
-**Superstore Discount Optimizer** - An end-to-end machine learning project that uses historical retail data to recommend discounts based on a desired profitability level.
-
-Key features:
-- PyTorch neural network for profit classification (Loss, Medium Profit, High Profit)
-- SQL data cleaning and analysis
-- Feature engineering with one-hot encoding (95 input features)
-- Interactive Streamlit application for discount recommendation
-- Discount range search algorithm
-
-Project structure:
-```
-Superstore/
-├── app.py
-├── requirements.txt
-├── data/
-│   └── ...
-├── notebooks/
-│   ├── experiments.ipynb
-│   ├── best_model.pth
-│   ├── categories.json
-│   └── feature_columns.json
-├── sql/
-│   └── ...
-└── README.md
-```
 
 ## License
 
