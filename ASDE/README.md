@@ -1,6 +1,6 @@
 # Alpine snow depth estimation
 
-**Status:** the dataset is rendered and Depth Anything 3 is scored on it, but the refiner isn't trained yet.
+**Status:** the dataset is rendered and a first refiner is trained. It beats Depth Anything 3 on validation frames, but the test split and real data are still untested.
 
 **Paper:** [snow_depth_research_paper.pdf](snow_depth_research_paper.pdf)
 
@@ -36,6 +36,49 @@ I ran frozen DA3Metric-Large on the 1,426 train and validation frames and left t
 AbsRel scores real distance. Order is the Spearman correlation with the exact depth, so it shows whether DA3 knows what's near and far. Spread is the ratio of the two standard deviations of log depth, and overlap compares their histograms after removing the overall scale.
 
 DA3 gets the order right but the metres wrong: the median pixel reads about 0.001 of its true distance, and even within 100 m it reads 0.177 of it. Spread also drops from 0.487 in sun to 0.291 in snowfall, so snow flattens its depth. A single scale correction won't fix that, which leaves the refiner real work to do.
+
+## First refiner results
+
+These come from 12 epochs on 1,246 training frames, with an RTX 3080 at batch size 2. The last 6 epochs added real AbsRel to the paper's loss, because the paper's loss alone left overshoot on nearby pixels. That's a change from the paper, and it still needs updating. Scores are on the 180 validation frames, so they're slightly optimistic. I chose the loss with them, and the test split hasn't been used.
+
+| Score | DA3 alone | Refiner | Perfect |
+|---|---:|---:|---:|
+| AbsRel | 0.977 | 0.562 | 0 |
+| Log error | 6.022 | 0.460 | 0 |
+| δ1, pixels within 25% | 0.002 | 0.341 | 1 |
+| Near and far order | 0.954 | 0.940 | 1 |
+| Typical distance vs true | 0.001x | 0.941x | 1x |
+
+The refiner beats DA3's mean AbsRel on 168 of 180 frames. Near and far order is the one score where DA3 stays ahead. These numbers are better than DA3's, but they're still weak for a depth model: only about a third of pixels are within 25% of the true distance.
+
+| Group | Frames | AbsRel | δ1 | Order |
+|---|---:|---:|---:|---:|
+| Sun | 78 | 0.441 | 0.395 | 0.961 |
+| Flat light | 58 | 0.753 | 0.330 | 0.932 |
+| Snowfall | 44 | 0.525 | 0.261 | 0.913 |
+| High views | 92 | 0.355 | 0.355 | 0.919 |
+| Ground views | 88 | 0.779 | 0.327 | 0.961 |
+
+I also tested the same weights with sensors switched off. LiDAR here is simulated, so its gain only holds in simulation.
+
+| Sensors | AbsRel | Log error | δ1 |
+|---|---:|---:|---:|
+| All | 0.562 | 0.460 | 0.341 |
+| No motion | 0.590 | 0.459 | 0.339 |
+| No LiDAR | 1.097 | 0.501 | 0.328 |
+| RGB only | 1.225 | 0.504 | 0.318 |
+
+## Areas of improvement
+
+- **Close range.** Pixels under 10 m score an AbsRel of 4.18 and those at 10 to 30 m score 2.62, against 0.31 at 3 to 10 km. They're only 5.7% of pixels, yet they push the mean up. 72% of the pixels under 10 m are predicted too far.
+- **Overfitting.** With the paper's loss alone, training loss fell from 0.312 to 0.132 over 6 epochs while validation AbsRel stayed near 0.62. I haven't used augmentation yet, and the LiDAR scans repeat every epoch, so flips, crops, colour jitter and fresh LiDAR noise come first.
+- **More data.** 1,246 frames from one 90 km area is small for 11 million parameters, and if augmentation doesn't help, more renders are the next step.
+- **Motion.** It adds almost nothing so far: log error doesn't change with it off, and second frames score no better than first frames. The warp uses DA3 depth with bad scale and includes sky pixels, so a second round on the refiner's own predictions with sky removed should show whether it can help.
+- **Flat light and snowfall.** Flat light has the worst AbsRel and snowfall the worst δ1 and order, which is the condition this project is about.
+- **Confidence map.** Its rank correlation with real error is only 0.135, and about 0 on high views, so H5 would be weak right now.
+- **LiDAR realism.** The snow noise comes from 30 scans of one heavy snowfall from a car, so it needs testing against real LiDAR, and lighter snow isn't measured.
+- **Real data.** DENSE and Boreas aren't set up yet, so nothing here shows how the model does on real images.
+- **A fairer baseline.** DA3's scale is so wrong that fixing scale alone would pass H1's 5% target. It should also be compared with DA3 after one scale correction per frame.
 
 ## Things I decided
 
