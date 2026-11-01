@@ -1,6 +1,6 @@
 # Alpine snow depth estimation
 
-**Status:** the dataset is rendered and a first refiner is trained. It beats Depth Anything 3 on rendered validation frames and fixes its scale on real mountain photos, but it's still inaccurate on real images and fails on real roads. The test split hasn't been used.
+**Status:** the dataset is rendered and the current model is v5. On validation renders it cuts Depth Anything 3's AbsRel from 0.977 to 0.387, and on real mountain photos from 0.962 to 0.854. On real roads, DA3 with a simple LiDAR scale fix still beats it, and from 10 to 100 m DA3 alone is still better on renders. Motion is switched off, and the test split hasn't been used.
 
 **Paper:** [snow_depth_research_paper.pdf](snow_depth_research_paper.pdf)
 
@@ -14,10 +14,10 @@ Depth models have very little to work with in snow and flat light, and real dept
 |---|---|
 | Dataset (done) | 1,556 images in 778 pairs on real terrain around the Eiger, in sun, flat light and snowfall. Each has exact depth and pose. |
 | Sensor simulators (done) | Python scripts that turn exact depth into LiDAR and exact poses into noisy GPS/IMU. The snow noise is measured from 30 real Boreas scans in heavy snow, so it's only a first calibration. |
-| Refiner | CNN encoder, transformer bottleneck and CNN decoder on 8 input channels. Takes DA3Metric-Large depth, LiDAR, a warped previous depth and RGB, then outputs corrected depth and a confidence map. |
+| Refiner | CNN encoder, transformer bottleneck with a residual skip, and CNN decoder. Takes DA3Metric-Large depth, LiDAR and RGB, then outputs corrected depth and a confidence map. The paper's warped previous depth is switched off for now, because it hurt close range. |
 | Evaluation | Five hypotheses written down before any training, tested on held-out renders and on real snow driving scenes from DENSE and Boreas. |
 
-LiDAR and motion are randomly switched off during training, so one model can run with whatever sensors are available.
+LiDAR is randomly switched off during training, so the model can run without it.
 
 ## Depth Anything 3 on the renders
 
@@ -36,6 +36,46 @@ I ran frozen DA3Metric-Large on the 1,426 train and validation frames and left t
 AbsRel scores real distance. Order is the Spearman correlation with the exact depth, so it shows whether DA3 knows what's near and far. Spread is the ratio of the two standard deviations of log depth, and overlap compares their histograms after removing the overall scale.
 
 DA3 gets the order right but the metres wrong: the median pixel reads about 0.001 of its true distance, and even within 100 m it reads 0.177 of it. Spread also drops from 0.487 in sun to 0.291 in snowfall, so snow flattens its depth. A single scale correction won't fix that, which leaves the refiner real work to do.
+
+## Current model: v5
+
+After the first model failed on real images, I audited the data and rebuilt how the model uses LiDAR. These are the changes:
+
+- It sets one scale for the whole frame, then makes a capped correction per pixel, up to about 20x either way.
+- It removes lone LiDAR points first. In a test on simulated snowfall this kept 96.9% of real points and 0.9% of flake points.
+- It spreads each remaining point to nearby pixels, and gets told directly how wrong DA3 is there.
+- Right next to a LiDAR point, the output uses that point's value, and the network takes over further away.
+- The loss adds real AbsRel and counts each distance band equally.
+- Training uses fresh LiDAR noise every epoch, flips and colour changes.
+- A residual skip goes around the transformer.
+- Motion is off, because the warp made close range worse.
+
+I also fixed the simulator, which was dropping too many points on shallow slopes. It's still sparser than the real sensor: my best frames reach about 21,000 points, against about 42,000 in a real road frame.
+
+All setups below are scored on the same frames, on pixels without a LiDAR point. "Scale fix" rescales DA3 with the median LiDAR ratio, and only runs where at least 50 points survive the filter.
+
+| AbsRel | DA3 | DA3 + scale fix | First model | v4, no skip | v5 |
+|---|---:|---:|---:|---:|---:|
+| Validation renders, 180 frames | 0.977 | 0.696 (60 frames) | 0.540 | 0.378 | 0.387 |
+| Real mountains, 120 photos | 0.962 | 0.644 (57 photos) | 1.242 | 0.824 | 0.854 |
+| Real clear road, 12 frames | 0.152 | 0.147 | 18.059 | 0.514 | 0.469 |
+| Real snow road, 24 frames | 1.281 | 1.235 | 55.352 | 7.655 | 5.936 |
+
+| Validation renders, AbsRel by distance | DA3 | First model | v5 |
+|---|---:|---:|---:|
+| 0 to 10 m | 0.619 | 3.757 | 0.343 |
+| 10 to 30 m | 0.782 | 3.932 | 1.651 |
+| 30 to 100 m | 0.894 | 3.597 | 2.114 |
+| 100 to 300 m | 0.961 | 0.841 | 0.453 |
+| 300 m to 1 km | 0.989 | 0.593 | 0.382 |
+| 1 to 3 km | 0.996 | 0.323 | 0.350 |
+| Over 3 km | 0.998 | 0.313 | 0.331 |
+
+v5 is my pick over v4 because it's better on the real roads and on most real mountain scores, including log error (0.963 against 1.110) and pixels within 25% (0.222 against 0.197), though the gaps are small and these are few frames. Its simulated LiDAR scores flatter it: the points come from the same depth used for scoring, and the output is pinned to them. That makes the real road rows, with real LiDAR, the fairest test of LiDAR, and there the simple scale fix still wins clearly. Close range is better but not solved, because 10 to 100 m is still worse than DA3.
+
+The notebook has the v5 model and a 26-epoch training run from scratch. v5's real weights came in stages (15 epochs with motion, a few without, then 8 on the current setup), so a run from scratch hasn't been tested in full and may score differently.
+
+The sections below describe the first model unless they say otherwise.
 
 ## First refiner results
 
@@ -92,7 +132,7 @@ Flat light with weak LiDAR, AbsRel 0.32, where most of the warp is empty:
 
 ## Tests on real images
 
-Everything above is on renders, so I also tried the same weights on real photos. These are quick checks: neither is the paper's formal evaluation, and the refiner never saw any of these images.
+These tests used the first model, and v5's scores on the same images are in the section on it above. Everything above is on renders, so I also tried the same weights on real photos. These are quick checks: neither is the paper's formal evaluation, and the refiner never saw any of these images.
 
 **Keep this in mind when reading these results.** I trained the model only on rendered, snow-covered mountains, because I couldn't get real snowy mountain images with exact depth and camera details myself. The real test images don't match that: most of the mountain photos have little snow, and the road scenes aren't mountains at all. So these numbers are only an approximation of how it would do on real snowy mountains, and they aren't a direct test of that. A proper test needs real snowy mountain photos with known depth, and I've only checked the first 120 photos of GeoPose3K so far.
 
@@ -152,15 +192,16 @@ Road images and LiDAR: [Boreas](https://registry.opendata.aws/boreas/) (Burnett 
 
 ## Areas of improvement
 
-- **Close range.** Pixels under 10 m score an AbsRel of 4.18 and those at 10 to 30 m score 2.62, against 0.31 at 3 to 10 km. They're only 5.7% of pixels, yet they push the mean up. 72% of the pixels under 10 m are predicted too far.
-- **Overfitting.** With the paper's loss alone, training loss fell from 0.312 to 0.132 over 6 epochs while validation AbsRel stayed near 0.62. I haven't used augmentation yet, and the LiDAR scans repeat every epoch, so flips, crops, colour jitter and fresh LiDAR noise come first.
+- **Close range.** In v5 on renders, 10 to 30 m scores 1.651 and 30 to 100 m scores 2.114, both worse than DA3's 0.782 and 0.894. The next step I'd try is a separate near path led by LiDAR, with its own loss, and a learned switch to the current model for far range.
+- **Real LiDAR and snow.** On real snow roads v5 scores 5.936, and 40.8 under 10 m, against DA3's 1.281. Those scores include flakes in the LiDAR used for scoring, so they're shaky, but it's far from working.
+- **Simulator density.** My best simulated frames get about half the points of a real road frame, and the published dataset still has LiDAR from the older simulator.
 - **More data.** 1,246 frames from one 90 km area is small for 11 million parameters, and if augmentation doesn't help, more renders are the next step.
-- **Motion.** It adds almost nothing so far: log error doesn't change with it off, and second frames score no better than first frames. The warp uses DA3 depth with bad scale and includes sky pixels. DA3 can put the ground only a few metres away, so a real move can carry those points past the camera. In the last figure above, DA3 puts the bottom of the previous frame about 4.7 m away and the camera moves 5.35 m, and most of the lower half of the warp is empty. A second round on the refiner's own predictions with sky removed should show whether motion can help.
+- **Motion.** It's off in v5, so the paper's motion hypothesis is still untested there. The warp code is right: with exact depth and motion its median error is 0.045%. The trouble was its input. DA3 can put the ground only a few metres away, so a real move can carry those points past the camera, and only 32% of the picture was covered, with 45% of warped pixels on sky. Warping the first model's predictions with sky removed still made 0 to 10 m worse, 5.04 against 1.78 with motion off, so it needs more work.
 - **Sensor marks in the output.** LiDAR scan lines and warp grid patterns show up in the refiner's depth and in its error map, so it's copying the sensor pattern where it should be smoothing between points.
 - **Flat light and snowfall.** Flat light has the worst AbsRel and snowfall the worst δ1 and order, which is the condition this project is about.
-- **Confidence map.** Its rank correlation with real error is only 0.135, and about 0 on high views, so H5 would be weak right now.
+- **Confidence map.** On the first model, its rank correlation with real error is only 0.135, and about 0 on high views, so H5 would be weak. I haven't measured this on v5.
 - **LiDAR realism.** The snow noise comes from 30 scans of one heavy snowfall from a car, so it needs testing against real LiDAR, and lighter snow isn't measured.
-- **Real images.** The refiner only knows mountains seen from a distance, so it fails on roads and its accuracy drops on real mountains. It needs near-ground renders, some real training images and possibly a limit on how big its correction can be.
+- **Real images.** The model trains only on renders of mountains, and real images score much lower than renders: 22% of pixels within 25% on real mountains against 40% on renders. It needs near-ground renders and some real training images.
 - **A proper real test.** The real-image tests are small quick checks. The full GeoPose3K archive, with a snow subset, could be the real alpine test the paper dropped, and DENSE and Boreas still need setting up as planned.
 - **A fairer baseline.** DA3's scale is so wrong that fixing scale alone would pass H1's 5% target. It should also be compared with DA3 after one scale correction per frame.
 
