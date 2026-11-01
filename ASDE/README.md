@@ -1,6 +1,6 @@
 # Alpine snow depth estimation
 
-**Status:** the dataset is rendered and a first refiner is trained. It beats Depth Anything 3 on validation frames, but the test split and real data are still untested.
+**Status:** the dataset is rendered and a first refiner is trained. It beats Depth Anything 3 on rendered validation frames and fixes its scale on real mountain photos, but it's still inaccurate on real images and fails on real roads. The test split hasn't been used.
 
 **Paper:** [snow_depth_research_paper.pdf](snow_depth_research_paper.pdf)
 
@@ -90,6 +90,62 @@ Flat light with weak LiDAR, AbsRel 0.32, where most of the warp is empty:
 
 ![Inputs and outputs in flat light with weak LiDAR](images/flatlight_0003_b.jpg)
 
+## Tests on real images
+
+Everything above is on renders, so I also tried the same weights on real photos. These are quick checks: neither is the paper's formal evaluation, and the refiner never saw any of these images.
+
+### Real mountains
+
+I took the first 120 photos from the [GeoPose3K](https://cphoto.fit.vutbr.cz/geoPose3K/) archive (about 3,000 photos of real mountains). Their depth comes from terrain models and known camera poses, and the median terrain distance is 1,662 m. "Perfect scale" rescales DA3 with the true depth, which no real system could do, so it only shows how much of DA3's error is scale.
+
+| Score | DA3 alone | Refiner, RGB only | DA3, perfect scale |
+|---|---:|---:|---:|
+| Typical distance vs true | 0.03x | 0.98x | 1.00x |
+| Log error | 4.482 | 1.195 | 0.626 |
+| δ1, pixels within 25% | 0.002 | 0.109 | 0.446 |
+| Near and far order | 0.905 | 0.876 | 0.905 |
+| AbsRel, mean of photos | 0.961 | 1.311 | 1.894 |
+| AbsRel, median photo | 0.978 | 0.804 | 0.558 |
+
+| True distance | DA3 AbsRel | Refiner AbsRel |
+|---|---:|---:|
+| Under 100 m | 0.848 | 3.761 |
+| 100 m to 1 km | 0.944 | 1.624 |
+| 1 to 3 km | 0.982 | 0.910 |
+| 3 to 10 km | 0.991 | 0.692 |
+| Over 10 km | 0.997 | 0.750 |
+
+The refiner carries over to real mountains in one way: it gets the overall scale about right where DA3 reads about 30 times too near, and it beats DA3's AbsRel on 88 of 120 photos. It's still weak, though. Only 11% of pixels are within 25%, against 34% on renders, and its order is a little worse than DA3's. Close range is what pushes its mean AbsRel above DA3's. DA3 with a correct scale is far better than the refiner on log error and δ1, so one real distance measurement might be worth more than this model.
+
+There are limits to this test. These 120 aren't a random sample, and few have much snow: 99 photos have under 10% white terrain, so this says little about snow. Trees and buildings aren't in the terrain models, and small alignment errors affect ridgelines.
+
+In the figure below, I chose the rows by score from the 16 openly licensed photos with some snow: a better one, the median and a worse one. DA3 has its own colour scale, because its values are so small. On these three the refiner scores 0.85, 1.39 and 2.80, against DA3's 1.00, 0.96 and 0.91, so this group is harder for it than the full set.
+
+![Real mountain photos with terrain depth, DA3 and refiner](images/real_mountains.jpg)
+
+Photos: Computer Vision and Geometry Group, ETH Zurich, via GeoPose3K (Brejcha and Čadík, 2017), Creative Commons Attribution-ShareAlike. This figure is shared under the same licence.
+
+### Real roads
+
+I tested 36 frames from [Boreas](https://registry.opendata.aws/boreas/) (CC BY 4.0), held back 20% of each frame's real LiDAR as the score and gave the rest to the model. None of these scans were used to calibrate the simulator.
+
+| Setup | Clear road AbsRel, 12 frames | Clear road δ1 | Snow road AbsRel, 24 frames | Snow road δ1 |
+|---|---:|---:|---:|---:|
+| DA3 alone | 0.152 | 0.832 | 1.282 | 0.651 |
+| DA3 + one scale fix from LiDAR | 0.147 | 0.844 | 1.197 | 0.692 |
+| Refiner, RGB only | 31.870 | 0.003 | 78.526 | 0.001 |
+| Refiner + real LiDAR | 18.135 | 0.002 | 55.301 | 0.002 |
+
+This is a clear failure. On a real road, DA3's scale is already about right, and the refiner still pushes depth 15 to 29 times too far, even with real LiDAR as input. On my renders DA3 reads about 1,000 times too near, so I think the refiner learned to push everything far. Don't use this model near the ground, on a robot for example. DA3 with a scale fix from a real sensor is a much better start there.
+
+The snow numbers are shaky. Order is only about 0.36 for every setup, which suggests snowflakes are polluting the LiDAR used as the score. Two of these drives also share a snowfall with the calibration scans.
+
+![Clear road with real LiDAR, DA3 and refiner](images/real_test_clear.jpg)
+
+![Snow road with real LiDAR, DA3 and refiner](images/real_test_snow.jpg)
+
+Road images and LiDAR: [Boreas](https://registry.opendata.aws/boreas/) (Burnett et al., 2023), CC BY 4.0.
+
 ## Areas of improvement
 
 - **Close range.** Pixels under 10 m score an AbsRel of 4.18 and those at 10 to 30 m score 2.62, against 0.31 at 3 to 10 km. They're only 5.7% of pixels, yet they push the mean up. 72% of the pixels under 10 m are predicted too far.
@@ -100,7 +156,8 @@ Flat light with weak LiDAR, AbsRel 0.32, where most of the warp is empty:
 - **Flat light and snowfall.** Flat light has the worst AbsRel and snowfall the worst δ1 and order, which is the condition this project is about.
 - **Confidence map.** Its rank correlation with real error is only 0.135, and about 0 on high views, so H5 would be weak right now.
 - **LiDAR realism.** The snow noise comes from 30 scans of one heavy snowfall from a car, so it needs testing against real LiDAR, and lighter snow isn't measured.
-- **Real data.** DENSE and Boreas aren't set up yet, so nothing here shows how the model does on real images.
+- **Real images.** The refiner only knows mountains seen from a distance, so it fails on roads and its accuracy drops on real mountains. It needs near-ground renders, some real training images and possibly a limit on how big its correction can be.
+- **A proper real test.** The real-image tests are small quick checks. The full GeoPose3K archive, with a snow subset, could be the real alpine test the paper dropped, and DENSE and Boreas still need setting up as planned.
 - **A fairer baseline.** DA3's scale is so wrong that fixing scale alone would pass H1's 5% target. It should also be compared with DA3 after one scale correction per frame.
 
 ## Things I decided
