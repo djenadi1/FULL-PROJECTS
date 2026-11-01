@@ -94,6 +94,8 @@ Flat light with weak LiDAR, AbsRel 0.32, where most of the warp is empty:
 
 Everything above is on renders, so I also tried the same weights on real photos. These are quick checks: neither is the paper's formal evaluation, and the refiner never saw any of these images.
 
+**Keep this in mind when reading these results.** I trained the model only on rendered, snow-covered mountains, because I couldn't get real snowy mountain images with exact depth and camera details myself. The real test images don't match that: most of the mountain photos have little snow, and the road scenes aren't mountains at all. So these numbers are only an approximation of how it would do on real snowy mountains, and they aren't a direct test of that. A proper test needs real snowy mountain photos with known depth, and I've only checked the first 120 photos of GeoPose3K so far.
+
 ### Real mountains
 
 I took the first 120 photos from the [GeoPose3K](https://cphoto.fit.vutbr.cz/geoPose3K/) archive (about 3,000 photos of real mountains). Their depth comes from terrain models and known camera poses, and the median terrain distance is 1,662 m. "Perfect scale" rescales DA3 with the true depth, which no real system could do, so it only shows how much of DA3's error is scale.
