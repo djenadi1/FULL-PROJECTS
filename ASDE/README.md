@@ -68,12 +68,35 @@ I also tested the same weights with sensors switched off. LiDAR here is simulate
 | No LiDAR | 1.097 | 0.501 | 0.328 |
 | RGB only | 1.225 | 0.504 | 0.318 |
 
+## What the model sees
+
+These are four validation frames I picked by hand. The first three have unusually strong LiDAR, up to 20,667 points, because the ground is close, while most frames have far fewer and about half have none. In each figure, the top row is the input (camera, simulated LiDAR, DA3 depth and the warped previous depth) and the bottom row is the output next to the exact depth, then the error and the model's uncertainty. Refiner and exact depth share a colour scale, with red near and blue far.
+
+The LiDAR dots are enlarged so they're visible. The ones scattered across the mountains in the snowfall frame are simulated flake returns.
+
+Sun, AbsRel 0.21:
+
+![Inputs and outputs in sun](images/sun_0204_b.jpg)
+
+Flat light, AbsRel 0.73, with the scan lines visibly printed into the refiner's depth:
+
+![Inputs and outputs in flat light](images/flatlight_0099_b.jpg)
+
+Snowfall, AbsRel 0.41:
+
+![Inputs and outputs in snowfall](images/snowfall_0159_b.jpg)
+
+Flat light with weak LiDAR, AbsRel 0.32, where most of the warp is empty:
+
+![Inputs and outputs in flat light with weak LiDAR](images/flatlight_0003_b.jpg)
+
 ## Areas of improvement
 
 - **Close range.** Pixels under 10 m score an AbsRel of 4.18 and those at 10 to 30 m score 2.62, against 0.31 at 3 to 10 km. They're only 5.7% of pixels, yet they push the mean up. 72% of the pixels under 10 m are predicted too far.
 - **Overfitting.** With the paper's loss alone, training loss fell from 0.312 to 0.132 over 6 epochs while validation AbsRel stayed near 0.62. I haven't used augmentation yet, and the LiDAR scans repeat every epoch, so flips, crops, colour jitter and fresh LiDAR noise come first.
 - **More data.** 1,246 frames from one 90 km area is small for 11 million parameters, and if augmentation doesn't help, more renders are the next step.
-- **Motion.** It adds almost nothing so far: log error doesn't change with it off, and second frames score no better than first frames. The warp uses DA3 depth with bad scale and includes sky pixels, so a second round on the refiner's own predictions with sky removed should show whether it can help.
+- **Motion.** It adds almost nothing so far: log error doesn't change with it off, and second frames score no better than first frames. The warp uses DA3 depth with bad scale and includes sky pixels. DA3 can put the ground only a few metres away, so a real move can carry those points past the camera. In the last figure above, DA3 puts the bottom of the previous frame about 4.7 m away and the camera moves 5.35 m, and most of the lower half of the warp is empty. A second round on the refiner's own predictions with sky removed should show whether motion can help.
+- **Sensor marks in the output.** LiDAR scan lines and warp grid patterns show up in the refiner's depth and in its error map, so it's copying the sensor pattern where it should be smoothing between points.
 - **Flat light and snowfall.** Flat light has the worst AbsRel and snowfall the worst δ1 and order, which is the condition this project is about.
 - **Confidence map.** Its rank correlation with real error is only 0.135, and about 0 on high views, so H5 would be weak right now.
 - **LiDAR realism.** The snow noise comes from 30 scans of one heavy snowfall from a car, so it needs testing against real LiDAR, and lighter snow isn't measured.
