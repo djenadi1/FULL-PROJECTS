@@ -1,8 +1,10 @@
 # Alpine Snow Depth Estimation
 
-**Status:** research proposal only. Nothing has been rendered or trained yet, so there are no results here.
+**Status:** the dataset is rendered, but nothing has been trained yet, so there are no results here.
 
 **Paper:** [snow_depth_research_paper.pdf](snow_depth_research_paper.pdf)
+
+**Dataset:** [Ab1231/alpine-snow-depth](https://huggingface.co/datasets/Ab1231/alpine-snow-depth) on Hugging Face
 
 Depth models have very little to work with in snow and flat light, and real depth labels are hard to get because LiDAR picks up snowflakes. My plan is to render alpine snow scenes in Unreal Engine 5, where the depth is exact, and train a small model on them that corrects the depth from a frozen Depth Anything 3.
 

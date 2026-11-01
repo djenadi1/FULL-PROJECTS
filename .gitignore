@@ -5,3 +5,5 @@
 *.cache
 PCBD/Data_app_test/*
 !PCBD/Data_app_test/README.md
+
+ASDE/data/
