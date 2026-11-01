@@ -1,6 +1,6 @@
 # Alpine snow depth estimation
 
-**Status:** the dataset is rendered, but nothing has been trained yet, so there are no results here.
+**Status:** the dataset is rendered and Depth Anything 3 is scored on it, but the refiner isn't trained yet.
 
 **Paper:** [snow_depth_research_paper.pdf](snow_depth_research_paper.pdf)
 
@@ -18,6 +18,24 @@ Depth models have very little to work with in snow and flat light, and real dept
 | Evaluation | Five hypotheses written down before any training, tested on held-out renders and on real snow driving scenes from DENSE and Boreas. |
 
 LiDAR and motion are randomly switched off during training, so one model can run with whatever sensors are available.
+
+## Depth Anything 3 on the renders
+
+I ran frozen DA3Metric-Large on the 1,426 train and validation frames and left the test split unscored. These are plain averages over frames, with sky left out.
+
+| Group | AbsRel | Order | Spread | Overlap |
+|---|---:|---:|---:|---:|
+| Overall | 0.962 | 0.951 | 0.402 | 0.518 |
+| Sun | 0.961 | 0.979 | 0.487 | 0.587 |
+| Flat light | 0.962 | 0.946 | 0.392 | 0.512 |
+| Snowfall | 0.963 | 0.918 | 0.291 | 0.425 |
+| High views | 0.999 | 0.933 | 0.401 | 0.550 |
+| Ground views | 0.906 | 0.979 | 0.404 | 0.471 |
+| Perfect score | 0 | 1 | 1 | 1 |
+
+AbsRel scores real distance. Order is the Spearman correlation with the exact depth, so it shows whether DA3 knows what's near and far. Spread is the ratio of the two standard deviations of log depth, and overlap compares their histograms after removing the overall scale.
+
+DA3 gets the order right but the metres wrong: the median pixel reads about 0.001 of its true distance, and even within 100 m it reads 0.177 of it. Spread also drops from 0.487 in sun to 0.291 in snowfall, so snow flattens its depth. A single scale correction won't fix that, which leaves the refiner real work to do.
 
 ## Things I decided
 
