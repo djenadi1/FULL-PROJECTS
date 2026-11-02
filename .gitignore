@@ -2,6 +2,7 @@
 *.parquet 
 *.npy
 *.pt
+!ASDE/models/refiner_v5.pt
 *.cache
 PCBD/Data_app_test/*
 !PCBD/Data_app_test/README.md

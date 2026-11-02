@@ -13,7 +13,7 @@
 | `notebooks/` | The model and training notebook, the sensor simulators, and the DA3 saving and scoring scripts |
 | `data/` | Where the [dataset](https://huggingface.co/datasets/Ab1231/alpine-snow-depth) goes, not stored in git |
 | `DA3_OUT/` | Saved DA3 depth, not stored in git |
-| `models/` | Trained weights, not stored in git |
+| `models/` | The trained v5 weights, [`refiner_v5.pt`](models/refiner_v5.pt) (44 MB, MIT licence). Older weights aren't stored in git |
 | `images/` | Figures for this README: `renders/`, `real/` and `drone/` |
 | `videos/` | The drone video |
 
