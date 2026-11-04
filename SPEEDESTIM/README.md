@@ -1,6 +1,6 @@
 # Vehicle speed estimation
 
-**Status:** version 2 of the dataset is rendered and public, with 150 cameras and cars in random colours, and YOLO26m-seg is trained on it, with a validation mask mAP50 of 0.884. The tracker and the speed transformer aren't built yet, and the test split hasn't been used.
+**Status:** version 2 of the dataset is rendered and public, with 150 cameras, and YOLO26m-seg is trained on it, with a validation mask mAP50 of 0.884. The tracker and the speed transformer aren't built yet, and the test split hasn't been used.
 
 **Dataset:** [Ab1231/city-sample-freeway-speed](https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed) on Hugging Face
 
@@ -40,7 +40,9 @@ Each split has its own stretch of the 1.9 km freeway with its own cameras, so va
 | Validation | 20 | 1,200 | 11,267 | 721 | A short straight between two bends |
 | Test | 20 | 1,200 | 12,840 | 715 | A big curve |
 
-The cameras go from 4 to 21 m above the road, with fields of view from 25 to 80 degrees, on poles beside the road or over it, facing either way. Regular cars get a random paint colour weighted like real traffic, while taxis, the police car, buses and trucks keep their own.
+The cameras go from 4 to 21 m above the road, with fields of view from 25 to 80 degrees, on poles beside the road or over it, facing either way.
+
+Version 2 was meant to give regular cars random paint colours, but they didn't apply: City Sample's paint reads its colour from a built-in colour table, which overrode mine, so the cars still have Epic's default paint. The generator is fixed now, and version 2 will be re-rendered with colours and updated.
 
 Traffic follows the Intelligent Driver Model on 3 lanes each way, so cars speed up, slow down and queue behind slower ones. The masks come from a second render pass where each car writes its own ID into the stencil buffer, and a pixel only counts when the car's depth matches the scene's depth, so walls and railings hide cars behind them.
 
@@ -70,7 +72,7 @@ Cars score lowest, and I think that's mostly the small ones far down the road. T
 
 Before this I ran a 10 epoch test of `yolo26s-seg` at 992 on version 1. On version 1's validation set it reached a box recall of 0.644 and a mask mAP50 of 0.672, so it missed about a third of the vehicles. The two runs use different validation sets, so the numbers don't compare exactly.
 
-I also tried that first model on one real photo of a street, taken from above at an angle. It found 7 of the 9 vehicles but missed a black SUV right at the front, and called most silver cars trucks. Version 1 had almost no dark cars, which is why version 2 has random paint. I haven't tried the new model on real photos yet.
+I also tried that first model on one real photo of a street, taken from above at an angle. It found 7 of the 9 vehicles but missed a black SUV right at the front, and called most silver cars trucks. Version 1 had almost no dark cars, and so does version 2 until its colours are fixed, so the new model probably has the same weakness. I haven't tried it on real photos yet.
 
 ## Areas of improvement
 
