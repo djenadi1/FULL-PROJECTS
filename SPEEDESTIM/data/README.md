@@ -12,7 +12,7 @@ tags:
   - yolo
   - unreal-engine
 size_categories:
-  - 1K<n<10K
+  - 10K<n<100K
 ---
 
 # City Sample freeway speed dataset
@@ -24,6 +24,41 @@ Synthetic freeway traffic rendered in Unreal Engine 5.8 on the elevated freeway 
 <video src="https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed/resolve/main/showcase/showcase_4k.mp4" controls width="100%"></video>
 
 The video is a 20 second 4K render of the same freeway with the ground truth drawn on. Each car's current speed is worked out from where it is 30 frames before and 30 frames after, next to its maximum and average since it came into view and its true speed. It isn't part of the splits below.
+
+There are two versions. Version 2, in `v2/`, is the one to use. Version 1 is the first set and is described further down.
+
+## Version 2
+
+150 cameras instead of 24, cars in random colours, and masks that walls and railings hide properly.
+
+- 150 clips of 20 seconds at 1920 x 1080 and 30 fps, 90,000 frames in all
+- 9,000 labelled images for YOLO segmentation, every 10th frame
+- 5,281 cars, from 22 to 150 km/h
+- About 9.8 GB
+
+| Split | Clips | Images | Masks | Cars | Camera height | Field of view | Pitch |
+|---|---:|---:|---:|---:|---|---|---|
+| Train | 110 | 6,600 | 71,316 | 3,845 | 4.0 to 21.3 m | 25 to 80 degrees | -33 to -3 degrees |
+| Validation | 20 | 1,200 | 11,267 | 721 | 4.0 to 17.4 m | 28 to 79 degrees | -24 to -3 degrees |
+| Test | 20 | 1,200 | 12,840 | 715 | 4.5 to 17.9 m | 30 to 77 degrees | -22 to -4 degrees |
+
+Every clip has its own camera, so a model sees 110 different heights, angles and lenses in training. That's meant to help it work on a new camera without much calibration.
+
+Regular cars get a random paint colour, weighted like real traffic: white 24%, black 20%, grey and silver 15% each, blue and red 8% each, and a little green, beige, orange and light blue. Taxis, the police car, buses and trucks keep their own paint.
+
+A mask now only covers a car where the camera really sees it. Version 1 masks didn't check the city around the cars, so a car behind the divider wall, a railing or a lamp post still got a mask there.
+
+The splits use the same three stretches of freeway as version 1, and the files are laid out the same way under `v2/`. Clip names start with `C2_`, like `C2_Train_017`.
+
+```python
+from ultralytics import YOLO
+
+YOLO("yolo26s-seg.pt").train(data="city-sample-freeway-speed/v2/yolo/data.yaml")
+```
+
+## Version 1
+
+The first set, in the top folders. It has fewer cameras, Epic's default paint and the mask problem above, so it's mostly here for comparison.
 
 - 24 clips of 60 seconds at 1920 x 1080 and 30 fps, 43,200 frames in all
 - 8,640 labelled images for YOLO segmentation, every 5th frame
@@ -46,7 +81,10 @@ yolo/
 tracks/<split>/<clip>.json        every car on every frame, with its true speed
 videos/<split>/<clip>.mp4         the whole clip
 showcase/showcase_4k.mp4          the video above
+v2/                               version 2, with the same yolo/, tracks/ and videos/ inside
 ```
+
+The top folders are version 1.
 
 Clip names look like `Train_04`, and image names add the frame number, so `Train_04_00090.jpg` is frame 90 of that clip. Frame `n` of a tracks file is frame `n` of the clip's video.
 
@@ -54,12 +92,12 @@ Clip names look like `Train_04`, and image names add the frame number, so `Train
 
 Each line is one vehicle: the class, then its outline as x, y pairs from 0 to 1.
 
-| Class | Name | Masks |
-|---:|---|---:|
-| 0 | car | 47,949 |
-| 1 | van | 13,809 |
-| 2 | truck | 20,302 |
-| 3 | bus | 8,165 |
+| Class | Name | Masks in version 2 | Masks in version 1 |
+|---:|---|---:|---:|
+| 0 | car | 48,089 | 47,949 |
+| 1 | van | 13,431 | 13,809 |
+| 2 | truck | 24,661 | 20,302 |
+| 3 | bus | 9,242 | 8,165 |
 
 The outlines only cover what you can see, so a car half behind a truck gets half an outline. Vehicles under 40 visible pixels have no label. A few images have no vehicles in view and an empty label file.
 
@@ -97,9 +135,9 @@ Traffic runs on 3 lanes each way with the Intelligent Driver Model. Every car ha
 
 The 13 vehicle models are Epic's City Sample cars, vans, trucks and bus. City Sample's own traffic was turned off, so every vehicle in a frame has a label.
 
-The masks come from a second render pass where each car writes its own ID into the stencil buffer.
+The masks come from a second render pass where each car writes its own ID into the stencil buffer. In version 2 a pixel only counts when the car's depth matches the scene's depth there, so anything in front of the car hides it.
 
-Each clip has one fixed camera, on a pole beside the road or over it, facing either way:
+Each clip has one fixed camera, on a pole beside the road or over it, facing either way. Version 2's cameras are in its table above, and these are version 1's:
 
 | Split | Height above road | Pitch | Field of view |
 |---|---|---|---|
@@ -121,11 +159,13 @@ No camera position is shared between splits. A camera can still see far down the
 
 ## Known limits
 
+In version 1, a car behind the divider wall, a railing or a lamp post still has a mask over that part, because the mask pass only checked cars against other cars. Most of its cameras look straight down the road, so this hits a minority of masks, but the outlines and the `lowest` points of those cars are wrong. Version 2 fixes it.
+
 Everything is from one freeway in one city, at one time of day, with no rain or night.
 
-There are only 16 training cameras, so a model can partly learn those camera angles instead of what camera height and angle do in general.
+Version 1 has only 16 training cameras, so a model can partly learn those camera angles instead of what camera height and angle do in general.
 
-Cars keep Epic's default paint, so most cars of one model look the same, like many silver sedans and yellow taxis.
+In version 1, cars keep Epic's default paint, so most cars of one model look the same, like many silver sedans and yellow taxis.
 
 The cars are moved along the lanes rather than driven, so their wheels don't spin. There's motion blur on the bodies.
 
