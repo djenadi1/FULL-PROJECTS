@@ -9,3 +9,8 @@ PCBD/Data_app_test/*
 
 ASDE/data/
 ASDE/DA3_OUT/
+
+SPEEDESTIM/data/
+SPEEDESTIM/speed_data/
+SPEEDESTIM/*.mp4
+SPEEDESTIM/CODE/runs/
