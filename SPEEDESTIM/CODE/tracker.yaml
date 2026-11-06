@@ -1,0 +1,9 @@
+# ByteTrack settings for the fine-tuned YOLO (v2_colour_1h), picked by the best IDF1 on the 20 val clips
+# (0.857 against 0.766 for the ultralytics defaults, ID switches 1655 -> 165)
+tracker_type: bytetrack
+track_high_thresh: 0.55 # boxes above this get matched first
+track_low_thresh: 0.1 # weaker boxes only keep existing tracks going
+new_track_thresh: 0.7 # a new ID needs a confident box
+track_buffer: 90 # frames a lost car is remembered
+match_thresh: 0.9
+fuse_score: True

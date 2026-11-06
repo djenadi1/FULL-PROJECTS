@@ -3,6 +3,8 @@
 *.npy
 *.pt
 !ASDE/models/refiner_v5.pt
+!SPEEDESTIM/CODE/speed_transformer.pt
+!SPEEDESTIM/CODE/models/yolo_colour.pt
 *.cache
 PCBD/Data_app_test/*
 !PCBD/Data_app_test/README.md
