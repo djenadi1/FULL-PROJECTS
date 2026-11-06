@@ -38,11 +38,11 @@ Each split has its own stretch of the 1.9 km freeway with its own cameras, so va
 |---|---:|---:|---:|---:|---|
 | Train | 110 | 6,600 | 71,316 | 3,845 | A long straight and a gentle curve |
 | Validation | 20 | 1,200 | 11,267 | 721 | A short straight between two bends |
-| Test | 20 | 1,200 | 12,840 | 715 | A big curve |
+| Test | 20 | 1,200 | 12,841 | 715 | A big curve |
 
 The cameras go from 4 to 21 m above the road, with fields of view from 25 to 80 degrees, on poles beside the road or over it, facing either way.
 
-Version 2 was meant to give regular cars random paint colours, but they didn't apply: City Sample's paint reads its colour from a built-in colour table, which overrode mine, so the cars still have Epic's default paint. The generator is fixed now, and version 2 will be re-rendered with colours and updated.
+Every vehicle has a random paint colour, weighted like real traffic, and that includes taxis, vans, buses and trucks, so a colour can't give the class away. The first upload of version 2 didn't really have them: City Sample's paint read its colour from a built-in colour table, which overrode mine. That's fixed, and on 6 November 2026 version 2 was re-rendered with the same cameras, traffic and speeds.
 
 Traffic follows the Intelligent Driver Model on 3 lanes each way, so cars speed up, slow down and queue behind slower ones. The masks come from a second render pass where each car writes its own ID into the stencil buffer, and a pixel only counts when the car's depth matches the scene's depth, so walls and railings hide cars behind them.
 
@@ -72,7 +72,22 @@ Cars score lowest, and I think that's mostly the small ones far down the road. T
 
 Before this I ran a 10 epoch test of `yolo26s-seg` at 992 on version 1. On version 1's validation set it reached a box recall of 0.644 and a mask mAP50 of 0.672, so it missed about a third of the vehicles. The two runs use different validation sets, so the numbers don't compare exactly.
 
-I also tried both models on one real photo of a street, taken from above at an angle. The first one found 7 of the 9 vehicles but missed a black SUV right at the front, and called most silver cars trucks. The new one was more sure of itself and got the white and blue cars right as cars, but it still missed the black SUV and still called a silver minivan a truck. Both datasets have almost no dark cars so far, and the only silver boxy vehicles in them are a pickup and a parcel truck, so I think colour is doing a lot of the work in both mistakes. YOLO will be trained again on version 2 once it's re-rendered with every vehicle in a random colour, buses and trucks included, so colour stops giving the class away.
+I also tried both models on one real photo of a street, taken from above at an angle. The first one found 7 of the 9 vehicles but missed a black SUV right at the front, and called most silver cars trucks. The new one was more sure of itself, but it still missed the black SUV and still called a silver minivan a truck. Both datasets had almost no dark cars, and the only silver boxy vehicles in them are a pickup and a parcel truck, so I think colour was doing a lot of the work in both mistakes.
+
+### After the colour fix
+
+I fine-tuned the model above for 1 hour (5 epochs) on the re-rendered version 2, where every vehicle has a random colour, at a lower learning rate of 0.002. Both models were then scored on the coloured validation and test sets:
+
+| Score | Before, val | After, val | Before, test | After, test |
+|---|---:|---:|---:|---:|
+| Box precision | 0.825 | 0.916 | 0.774 | 0.895 |
+| Box recall | 0.724 | 0.789 | 0.623 | 0.681 |
+| Mask mAP50 | 0.751 | 0.846 | 0.656 | 0.746 |
+| Mask mAP50-95 | 0.519 | 0.592 | 0.440 | 0.509 |
+
+The model trained on default paint drops a lot once the colours change, from 0.884 to 0.751 mask mAP50 on validation, which shows it had partly learned colours instead of shapes. After one hour on coloured cars it gets most of that back, and it was still improving when it stopped.
+
+On the real photo it shows the same thing. Before, a blue hatchback and a teal car were called buses and a purple car a van, because in the old data those colours only came on buses and vans. After, all three are cars. It still misses the black SUV, and the silver minivans are still trucks, so shape and the small number of vehicle models matter here too. The weights are in `runs/segment/v2_colour_1h`.
 
 ## Speed model results
 
@@ -128,7 +143,7 @@ Cars partly hidden behind other cars weren't worse than the others, so hiding is
 ## Areas of improvement
 
 - **Small cars.** Car is the weakest class for YOLO, at a mask mAP50-95 of 0.510, and far cars are the weakest for the speed model too.
-- **Car colours.** Version 2 still has Epic's default paint, so YOLO misses dark cars. It'll be re-rendered with every vehicle in a random colour, and YOLO trained again on it.
+- **Car colours.** Version 2 now has random colours, but YOLO still missed a black SUV in a real photo after one hour of training on it. A longer run should help.
 - **Low cameras.** The speed model is 11.78 km/h off on new cameras under 7 m, against 3.94 km/h on new cameras over 12 m.
 - **Vehicle models.** There are only 13, so a real car that looks like none of them, or a familiar shape in a new colour, can still be missed or put in the wrong class.
 - **One place and one light.** Everything is one freeway at one time of day, with no rain or night.

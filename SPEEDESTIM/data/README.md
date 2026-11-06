@@ -31,7 +31,7 @@ There are two versions. Version 2, in `v2/`, is the one to use. Version 1 is the
 
 150 cameras instead of 24, and masks that walls and railings hide properly.
 
-**Known bug, to be fixed in an update:** version 2 was meant to give regular cars random paint colours, but the colours didn't apply, so its cars still have Epic's default paint like version 1. City Sample's paint takes its colour from a built-in colour table and ignored the one I set. That's fixed in the generator now, and version 2 will be re-rendered with the colours and updated here. The cameras, traffic, masks and speeds stay the same, only the images change.
+**Updated 6 November 2026:** version 2 was re-rendered so the random paint colours really show. In the first upload they didn't, because City Sample's paint took its colour from a built-in colour table and ignored the one I set. The cameras, traffic and speeds are the same as before, only the images and videos changed.
 
 - 150 clips of 20 seconds at 1920 x 1080 and 30 fps, 90,000 frames in all
 - 9,000 labelled images for YOLO segmentation, every 10th frame
@@ -42,11 +42,11 @@ There are two versions. Version 2, in `v2/`, is the one to use. Version 1 is the
 |---|---:|---:|---:|---:|---|---|---|
 | Train | 110 | 6,600 | 71,316 | 3,845 | 4.0 to 21.3 m | 25 to 80 degrees | -33 to -3 degrees |
 | Validation | 20 | 1,200 | 11,267 | 721 | 4.0 to 17.4 m | 28 to 79 degrees | -24 to -3 degrees |
-| Test | 20 | 1,200 | 12,840 | 715 | 4.5 to 17.9 m | 30 to 77 degrees | -22 to -4 degrees |
+| Test | 20 | 1,200 | 12,841 | 715 | 4.5 to 17.9 m | 30 to 77 degrees | -22 to -4 degrees |
 
 Every clip has its own camera, so a model sees 110 different heights, angles and lenses in training. That's meant to help it work on a new camera without much calibration.
 
-After the update, regular cars will get a random paint colour, weighted like real traffic: white 24%, black 20%, grey and silver 15% each, blue and red 8% each, and a little green, beige, orange and light blue. Taxis, the police car, buses and trucks keep their own paint.
+Every vehicle gets a random paint colour, weighted like real traffic: white 22%, black 19%, grey and silver 14% each, blue and red 8% each, and a little yellow, green, beige, orange, teal and light blue. That includes taxis, the police car, vans, buses and trucks, so a model can't learn that a colour means a vehicle type.
 
 A mask now only covers a car where the camera really sees it. Version 1 masks didn't check the city around the cars, so a car behind the divider wall, a railing or a lamp post still got a mask there.
 
@@ -167,7 +167,7 @@ Everything is from one freeway in one city, at one time of day, with no rain or 
 
 Version 1 has only 16 training cameras, so a model can partly learn those camera angles instead of what camera height and angle do in general.
 
-Cars keep Epic's default paint in both versions for now, so most cars of one model look the same, like many silver sedans and yellow taxis. A model trained on this can miss dark cars: an early one missed a black SUV in a real photo. Version 2 will be updated with random colours.
+Version 1 cars keep Epic's default paint, so most cars of one model look the same, like many silver sedans and yellow taxis. A model trained on it can miss dark cars: an early one missed a black SUV in a real photo. Version 2 has random colours on every vehicle.
 
 The cars are moved along the lanes rather than driven, so their wheels don't spin. There's motion blur on the bodies.
 
