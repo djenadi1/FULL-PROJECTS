@@ -17,7 +17,7 @@ size_categories:
 
 # City Sample freeway speed dataset
 
-By Djenadi Mohammed. Download it from [Hugging Face](https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed).
+By Djenadi Mohammed. Download it from [Hugging Face](https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed). Version 2 is also on [Kaggle](https://www.kaggle.com/datasets/mohammeddjenadi/city-sample-freeway-speed).
 
 Synthetic freeway traffic rendered in Unreal Engine 5.8 on the elevated freeway of Epic's City Sample (the Small City map). Every car has its exact speed on every frame, a segmentation mask and a track ID, so it can train a detector, test a tracker and train a speed model from the same footage.
 

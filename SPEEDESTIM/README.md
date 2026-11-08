@@ -2,7 +2,7 @@
 
 **Status:** version 2 of the dataset is rendered and public, with 150 cameras. YOLO26m-seg is trained on it, with a validation mask mAP50 of 0.884, and the first speed transformer is trained on the true tracks. With a high camera it's 2.75 km/h off on average for cars close to the camera, and 7.32 km/h over every camera and distance. The tracker isn't built yet, and the test split hasn't been used.
 
-**Dataset:** [Ab1231/city-sample-freeway-speed](https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed) on Hugging Face
+**Dataset:** [Ab1231/city-sample-freeway-speed](https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed) on Hugging Face, and version 2 is also on [Kaggle](https://www.kaggle.com/datasets/mohammeddjenadi/city-sample-freeway-speed)
 
 **Demo:** [20 s 4K video](https://huggingface.co/datasets/Ab1231/city-sample-freeway-speed/resolve/main/showcase/showcase_4k.mp4) with the ground truth drawn on
 
