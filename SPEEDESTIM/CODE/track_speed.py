@@ -56,7 +56,7 @@ class SpeedTransformer(nn.Module):
 
 
 # 1. load the models
-yolo = YOLO(HERE / "models/yolo_colour.pt")  # a copy of runs/segment/v2_colour_1h/weights/best.pt
+yolo = YOLO(HERE / "models/yolo_colour.pt")  # a copy of runs/segment/v2_colour_l_10h/weights/best.pt (YOLO26l-seg, 10 hours)
 checkpoint = torch.load(HERE / "speed_transformer.pt", map_location="cpu")
 model = SpeedTransformer()
 model.load_state_dict(checkpoint["model"])
