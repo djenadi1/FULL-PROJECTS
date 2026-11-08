@@ -89,6 +89,38 @@ The model trained on default paint drops a lot once the colours change, from 0.8
 
 On the real photo it shows the same thing. Before, a blue hatchback and a teal car were called buses and a purple car a van, because in the old data those colours only came on buses and vans. After, all three are cars. It still misses the black SUV, and the silver minivans are still trucks, so shape and the small number of vehicle models matter here too. The weights are in `runs/segment/v2_colour_1h`.
 
+### A larger model for 10 hours
+
+Since the 1 hour run was still improving, I trained a new one for 10 hours. Four things changed from the 1 hour run:
+
+1. The model is `yolo26l-seg` (31.5 million parameters), one size up from `yolo26m-seg`.
+2. It started from the COCO weights, so it didn't build on my version 2 model.
+3. I turned the hue and saturation augmentation right up, to `hsv_h=0.5` and `hsv_s=0.9`. The defaults are 0.015 and 0.7, which barely change a car's colour. At 0.5 a red car can come out green or blue, so colour gives the model nothing to go on. That's the shortcut that broke version 1.
+4. It trained for 41 epochs in 10 hours, with a learning rate of 0.01 on a cosine schedule and a batch size of 2. I timed a few batch sizes first. Batch 3 needs 10.8 GB and batch 4 needs 14.5 GB, so both spill past the 10 GB on the RTX 3080 and run 8 to 30 times slower. Batch 2 uses 7.6 GB and does about 9 images a second, about 13 minutes an epoch.
+
+Unlike the 1 hour run, this one did level off. Mask mAP50 sat at 0.873 to 0.874 from about epoch 29 on.
+
+Both models scored with the same settings on the coloured sets:
+
+| Score | 1 h M, val | 10 h L, val | 1 h M, test | 10 h L, test |
+|---|---:|---:|---:|---:|
+| Box precision | 0.917 | 0.944 | 0.895 | 0.902 |
+| Box recall | 0.788 | 0.842 | 0.681 | 0.723 |
+| Mask mAP50 | 0.847 | 0.875 | 0.746 | 0.768 |
+| Mask mAP50-95 | 0.592 | 0.625 | 0.509 | 0.528 |
+
+The bigger difference is on real footage it never saw, two motorway clips from Wikimedia Commons, tracked with the same tuned ByteTrack settings (`CODE/tracker.yaml`):
+
+| | 1 h M, I-495 | 10 h L, I-495 | 1 h M, A40 | 10 h L, A40 |
+|---|---:|---:|---:|---:|
+| Tracked vehicles per frame | 10.5 | 19.4 | 7.5 | 13.1 |
+| Track IDs lasting 15+ frames | 111 | 124 | 37 | 46 |
+| Median track length (frames) | 81 | 134 | 124 | 173 |
+
+On the A40 the new model finds the red lorry, the black car behind it and the traffic further down the road, which the 1 hour model missed completely. On the I-495 it calls a grey minivan a car, where the old one said truck. Both still call a silver SUV and a pickup trucks.
+
+The clips have no labels, so these are counts of tracked boxes with a confidence of at least 0.25, not accuracy. Also, since four things changed at once, I can't say how much came from each. The gain on the synthetic test set is small (+0.022 mask mAP50) next to the gain on real video, so my guess is the colour shifts did more than the bigger model. These weights are in `runs/segment/v2_colour_l_10h`, and the Streamlit app now uses them (`CODE/models/yolo_colour.pt`). A bigger model means the app takes longer per video on its CPU.
+
 ## Speed model results
 
 These come from a 4 layer encoder-only transformer with 804,000 parameters. It trained on the true tracks of version 2 for 30 epochs at a batch size of 512, which took about 7 minutes on an RTX 3080. The score is the mean absolute error at the frame the model predicts, on the validation cameras, which sit on a stretch of road the model never trained on.
